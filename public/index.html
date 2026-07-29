@@ -728,6 +728,10 @@ function colorForCount(n, max){
 function initMap(){
   mapInitialized = true;
   map = L.map('map', {scrollWheelZoom:false}).setView([-8.25, 112.75], 10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19
+  }).addTo(map);
   geoLayer = L.geoJSON(GEOJSON, {
     style: feature => styleForFeature(feature),
     onEachFeature: (feature, layer) => {
@@ -735,7 +739,7 @@ function initMap(){
       kecLayerByName[name] = layer;
       layer.on('click', () => openKecamatanPopup(name, layer));
       layer.on('mouseover', () => layer.setStyle({weight:2.5, color:'#13294B'}));
-      layer.on('mouseout', () => layer.setStyle({weight:1, color:'#514637'}));
+      layer.on('mouseout', () => layer.setStyle({weight:1.5, color:'#13294B'}));
     }
   }).addTo(map);
   setTimeout(()=>{
@@ -746,7 +750,7 @@ function initMap(){
 function styleForFeature(feature){
   const name = feature.properties.kecamatan;
   const maxViol = Math.max(1, ...KECAMATAN_LIST.map(k=>totalByKecamatan(k)));
-  return { fillColor: colorForCount(totalByKecamatan(name), maxViol), fillOpacity:0.85, color:'#514637', weight:1 };
+  return { fillColor: colorForCount(totalByKecamatan(name), maxViol), fillOpacity:0.55, color:'#13294B', weight:1.5 };
 }
 function openKecamatanPopup(name, layer){
   const html = `<div class="popup-inner">
