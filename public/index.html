@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistem Pengolahan Data Hasil Pengawasan — Kabupaten Malang</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F1EDE3;
+    --paper-deep:#E7E1D2;
+    --ink:#201B16;
+    --maroon:#6E1423;
+    --maroon-deep:#4A0E18;
+    --gold:#AD8A3A;
+    --gold-bright:#C9A227;
+    --teal:#33564E;
+    --line:#C9BFA8;
+    --white:#FBFAF6;
+    --danger:#8A2A1F;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    background-image:radial-gradient(circle at 1px 1px, rgba(32,27,22,0.05) 1px, transparent 0);
+    background-size: 22px 22px;
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+  }
+  a{color:inherit;}
+  ::selection{background:var(--gold-bright); color:var(--ink);}
+
+  .masthead{
+    border-bottom:3px double var(--ink);
+    background:var(--white);
+    padding:22px 28px 0;
+    position:relative;
+  }
+  .masthead::before{
+    content:"";
+    position:absolute; left:0; right:0; bottom:-3px; height:3px;
+    background:repeating-linear-gradient(90deg, var(--maroon) 0 18px, var(--gold-bright) 18px 36px);
+    opacity:0.9;
+  }
+  .masthead-inner{
+    max-width:1400px; margin:0 auto;
+    display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap;
+    padding-bottom:16px;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--maroon); font-weight:600;
+  }
+  h1.title{
+    font-family:'Source Serif 4', serif; font-weight:700;
+    font-size:clamp(22px, 2.6vw, 34px); margin:4px 0 2px; letter-spacing:-0.01em;
+  }
+  .subtitle{font-size:13px; color:#514637;}
+  .status-badge{
+    font-family:'IBM Plex Mono', monospace; font-size:11px;
+    border:1px solid var(--ink); padding:6px 12px;
+    display:flex; gap:8px; align-items:center; background:var(--paper);
+  }
+  .status-dot{width:8px;height:8px;border-radius:50%;background:var(--teal);}
+
+  /* Tab nav */
+  .tabnav{
+    max-width:1400px; margin:0 auto; display:flex; gap:2px;
+    padding:0 28px; overflow-x:auto;
+  }
+  .tabbtn{
+    font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.03em;
+    padding:10px 18px; background:var(--paper-deep); border:1px solid var(--line); border-bottom:none;
+    cursor:pointer; white-space:nowrap; color:#6b6050;
+    position:relative; top:1px;
+  }
+  .tabbtn.active{
+    background:var(--paper); color:var(--ink); font-weight:600; border-color:var(--ink);
+  }
+  .tabbtn .n{color:var(--maroon); margin-right:6px;}
+
+  main{max-width:1400px; margin:0 auto; padding:24px 28px 40px;}
+  .tabpanel{display:none;}
+  .tabpanel.active{display:block;}
+
+  .panel{
+    background:var(--white); border:1px solid var(--line); box-shadow: 4px 4px 0 rgba(32,27,22,0.06);
+  }
+  .panel-head{
+    display:flex; align-items:center; justify-content:space-between; padding:12px 16px;
+    border-bottom:1px solid var(--line); background:var(--paper-deep); flex-wrap:wrap; gap:8px;
+  }
+  .panel-head h2{font-family:'Source Serif 4', serif; font-size:16px; margin:0; font-weight:600;}
+  .panel-num{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--maroon); font-weight:600;}
+  .panel-body{padding:16px;}
+
+  /* API key settings */
+  .apikey-box{
+    display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:16px;
+    background:var(--paper); border:1px solid var(--line); padding:12px 14px;
+  }
+  .apikey-box label{font-size:11px; font-family:'IBM Plex Mono',monospace; color:#6b6050; display:block; margin-bottom:4px;}
+  .apikey-box input[type=text]{
+    font-family:'IBM Plex Mono',monospace; font-size:12px; padding:7px 9px; border:1px solid var(--line);
+    background:var(--white); min-width:280px; flex:1;
+  }
+  .apikey-box .hint{font-size:10.5px; color:#8a7f6a; width:100%;}
+  .btn{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.04em;
+    border:1px solid var(--ink); background:var(--ink); color:var(--white); padding:7px 14px; cursor:pointer;
+  }
+  .btn:hover{background:var(--maroon-deep); border-color:var(--maroon-deep);}
+  .btn-ghost{background:var(--paper); color:var(--ink);}
+  .btn-ghost:hover{background:var(--paper-deep);}
+  .apikey-status{font-family:'IBM Plex Mono',monospace; font-size:11px;}
+  .apikey-status.ok{color:var(--teal);}
+  .apikey-status.bad{color:var(--danger);}
+
+  /* Upload */
+  .intake-zone{
+    border:2px dashed var(--maroon);
+    background:repeating-linear-gradient(135deg, rgba(110,20,35,0.03) 0 10px, transparent 10px 20px);
+    padding:22px 16px; text-align:center; cursor:pointer; transition:background .15s;
+  }
+  .intake-zone:hover{background:rgba(110,20,35,0.06);}
+  .intake-zone.dragover{background:rgba(173,138,58,0.15); border-color:var(--gold-bright);}
+  .intake-zone .stamp{
+    font-family:'IBM Plex Mono',monospace; display:inline-block; border:2px solid var(--maroon);
+    color:var(--maroon); padding:4px 10px; font-size:11px; letter-spacing:.1em; transform:rotate(-3deg); margin-bottom:8px;
+  }
+  .intake-zone p{margin:4px 0; font-size:13px; color:#514637;}
+  .intake-zone .big{font-family:'Source Serif 4',serif; font-size:17px; font-weight:600; margin-bottom:2px;}
+
+  .log{max-height:200px; overflow-y:auto; font-family:'IBM Plex Mono',monospace; font-size:11.5px; margin-top:12px;}
+  .log-item{padding:8px 10px; border-left:3px solid var(--line); margin-bottom:6px; background:var(--paper); display:flex; flex-direction:column; gap:2px;}
+  .log-item.ok{border-left-color:var(--teal);}
+  .log-item.err{border-left-color:var(--danger);}
+  .log-item.busy{border-left-color:var(--gold-bright);}
+  .log-item .fn{font-weight:600;}
+  .log-item .meta{color:#7a6f5c;}
+
+  /* REKAP matrix table */
+  .matrix-wrap{overflow:auto; max-height:640px; border:1px solid var(--line); margin-top:18px;}
+  table.matrix{border-collapse:collapse; font-size:11px; font-family:'IBM Plex Mono',monospace; min-width:100%;}
+  table.matrix th, table.matrix td{
+    border:1px solid var(--line); padding:4px 6px; text-align:center; background:var(--white); white-space:nowrap;
+  }
+  table.matrix thead th{
+    position:sticky; top:0; background:var(--paper-deep); z-index:2; font-weight:600;
+  }
+  table.matrix .col-no{ position:sticky; left:0; z-index:1; width:32px; background:var(--paper-deep); text-align:center;}
+  table.matrix .col-ind{
+    position:sticky; left:32px; z-index:1; background:var(--paper-deep); text-align:left; white-space:normal;
+    min-width:260px; max-width:320px; font-family:'IBM Plex Sans',sans-serif; font-size:11.5px; line-height:1.3;
+  }
+  table.matrix thead .col-no{ z-index:3; }
+  table.matrix thead .col-ind{ z-index:3; }
+  table.matrix .kec-head{ writing-mode:vertical-rl; transform:rotate(180deg); height:110px; font-size:10px; cursor:default; }
+  table.matrix .dim-row td{
+    background:var(--maroon); color:var(--white); font-family:'Source Serif 4',serif; font-weight:700;
+    font-size:12.5px; text-align:left; position:sticky; left:0;
+  }
+  table.matrix .sub-row td{
+    background:var(--gold); color:var(--ink); font-weight:700; text-align:left; font-size:11px;
+    position:sticky; left:0;
+  }
+  table.matrix .total-col{background:#F3E9D8; font-weight:700;}
+  table.matrix td.hit{background:#F6D9C6; color:var(--maroon-deep); font-weight:700;}
+
+  /* Map */
+  #map{height:560px; width:100%; background:#dcd6c4;}
+  .legend-bar{
+    display:flex; align-items:center; gap:10px; padding:10px 16px; border-top:1px solid var(--line);
+    font-size:11px; font-family:'IBM Plex Mono',monospace; background:var(--paper-deep); flex-wrap:wrap;
+  }
+  .legend-scale{display:flex; height:10px; width:160px; border:1px solid var(--ink);}
+  .legend-scale div{flex:1;}
+  .leaflet-popup-content-wrapper{border-radius:0; border:1px solid var(--ink); font-family:'IBM Plex Sans',sans-serif;}
+  .popup-inner{min-width:190px;}
+  .popup-inner h4{font-family:'Source Serif 4',serif; margin:0 0 6px; font-size:16px;}
+  .popup-row{display:flex; justify-content:space-between; font-size:12px; padding:2px 0;}
+  .popup-btn{margin-top:8px; width:100%; padding:6px; background:var(--maroon); color:#fff; border:none; font-family:'IBM Plex Mono',monospace; font-size:11px; cursor:pointer; letter-spacing:.05em;}
+  .popup-btn:hover{background:var(--maroon-deep);}
+
+  /* Drawer */
+  #overlay{position:fixed; inset:0; background:rgba(20,16,12,0.35); display:none; z-index:998;}
+  #drawer{position:fixed; top:0; right:-560px; width:540px; max-width:92vw; height:100vh; background:var(--white); border-left:3px double var(--ink); z-index:999; transition:right .25s ease; overflow-y:auto;}
+  #drawer.open{right:0;}
+  #overlay.show{display:block;}
+  .drawer-head{padding:18px 22px; border-bottom:1px solid var(--line); background:var(--maroon-deep); color:var(--white); position:sticky; top:0; z-index:2;}
+  .drawer-head .kec-name{font-family:'Source Serif 4', serif; font-size:22px; font-weight:700;}
+  .drawer-head .kec-sub{font-size:12px; opacity:.85; font-family:'IBM Plex Mono',monospace; margin-top:2px;}
+  .drawer-close{position:absolute; top:16px; right:18px; cursor:pointer; font-family:'IBM Plex Mono',monospace; font-size:12px; border:1px solid rgba(255,255,255,.5); padding:4px 8px; color:var(--white); background:transparent;}
+  .drawer-body{padding:20px 22px;}
+  .dsec{margin-bottom:18px;}
+  .dsec h3{font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--maroon); margin:0 0 8px; border-bottom:1px solid var(--line); padding-bottom:6px;}
+  .dsec h4{font-size:11.5px; font-weight:700; color:var(--gold); margin:10px 0 4px;}
+  .kv{display:flex; justify-content:space-between; font-size:13px; padding:4px 0; border-bottom:1px dotted var(--line);}
+  .kv b{font-family:'Source Serif 4',serif; font-size:18px;}
+  .barrow{display:flex; align-items:center; gap:8px; font-size:11.5px; margin-bottom:5px;}
+  .barrow .lbl{width:180px; flex-shrink:0; font-size:11px;}
+  .barrow .track{flex:1; height:9px; background:var(--paper-deep); border:1px solid var(--line);}
+  .barrow .fill{height:100%; background:var(--maroon);}
+  .barrow .cnt{width:20px; text-align:right; font-family:'IBM Plex Mono',monospace; font-size:11px;}
+  .empty-note{font-size:12.5px; color:#8a7f6a; font-style:italic;}
+
+  /* Ringkasan tab */
+  textarea.template{
+    width:100%; min-height:220px; font-family:'IBM Plex Mono',monospace; font-size:12.5px;
+    border:1px solid var(--line); padding:12px; background:var(--paper);
+  }
+  .ringkasan-output{
+    white-space:pre-wrap; font-family:'IBM Plex Sans',sans-serif; font-size:13.5px; line-height:1.6;
+    background:var(--paper); border:1px solid var(--line); padding:16px; margin-top:14px;
+  }
+
+  /* Infografis */
+  .chart-grid{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
+  @media (max-width:900px){ .chart-grid{grid-template-columns:1fr;} }
+  .chart-card{background:var(--white); border:1px solid var(--line); padding:16px;}
+  .chart-card h3{font-family:'Source Serif 4',serif; font-size:15px; margin:0 0 12px;}
+  canvas{max-width:100%;}
+
+  footer{
+    max-width:1400px; margin:30px auto 40px; padding:0 28px; font-size:11px; color:#7a6f5c;
+    font-family:'IBM Plex Mono',monospace; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;
+  }
+  ::-webkit-scrollbar{width:8px; height:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--line);}
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-inner">
+    <div>
+      <div class="eyebrow">Badan Pengawas Pemilihan Umum · Kabupaten Malang</div>
+      <h1 class="title">Sistem Pengolahan Data Hasil Pengawasan</h1>
+      <div class="subtitle">Digitalisasi LHP Form A — Pemetaan Kerawanan Berdasarkan 61 Indikator IKP, 33 Kecamatan</div>
+    </div>
+    <div class="status-badge"><span class="status-dot"></span><span id="status-text">memuat data…</span></div>
+  </div>
+  <div class="tabnav">
+    <button class="tabbtn active" data-tab="input"><span class="n">1</span>Input LHP</button>
+    <button class="tabbtn" data-tab="peta"><span class="n">2</span>Peta Kecamatan</button>
+    <button class="tabbtn" data-tab="ringkasan"><span class="n">3</span>Ringkasan Hasil</button>
+    <button class="tabbtn" data-tab="infografis"><span class="n">4</span>Infografis</button>
+  </div>
+</div>
+
+<main>
+
+  <!-- TAB 1: INPUT -->
+  <section class="tabpanel active" id="tab-input">
+    <div class="apikey-box">
+      <div style="flex:1; min-width:280px;">
+        <label>Gemini API Key (disimpan di browser ini, bisa diganti kapan saja)</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="apiKeyInput" placeholder="AIzaSy... (boleh lebih dari satu, pisahkan koma untuk rotasi otomatis saat kuota habis)">
+          <button class="btn" id="saveKeyBtn">Simpan</button>
+        </div>
+      </div>
+      <span class="apikey-status" id="apiKeyStatus">belum diisi</span>
+      <div class="hint">Kunci ini hanya tersimpan di browser Anda (localStorage), tidak dikirim ke server manapun selain langsung ke Google. Dapatkan gratis di aistudio.google.com/apikey</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Unggah Form A</h2><span class="panel-num">PDF LHP</span></div>
+      <div class="panel-body">
+        <div class="intake-zone" id="dropzone">
+          <div class="stamp">LHP · FORM A</div>
+          <div class="big">Seret berkas PDF ke sini</div>
+          <p>atau klik untuk memilih file (bisa lebih dari satu sekaligus)</p>
+          <p style="font-size:11px; color:#8a7f6a;">Teks diekstrak di peramban Anda, lalu diklasifikasikan langsung ke Gemini berdasarkan 61 indikator IKP.</p>
+          <input type="file" id="fileInput" accept="application/pdf" multiple style="display:none;">
+        </div>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+
+    <div class="panel-head" style="margin-top:22px; border:1px solid var(--line); border-bottom:none;">
+      <h2>Rekapitulasi Indikator (otomatis, seperti REKAP.xlsx)</h2>
+      <span class="panel-num" id="matrix-meta">0 LAPORAN</span>
+    </div>
+    <div class="matrix-wrap" id="matrix-wrap"></div>
+  </section>
+
+  <!-- TAB 2: PETA -->
+  <section class="tabpanel" id="tab-peta">
+    <div class="panel">
+      <div class="panel-head"><h2>Peta Sebaran Kecamatan</h2><span class="panel-num">33 KEC.</span></div>
+      <div id="map"></div>
+      <div class="legend-bar">
+        <span>Kepadatan kejadian:</span>
+        <div class="legend-scale">
+          <div style="background:#EFE9DA"></div><div style="background:#E3C88F"></div>
+          <div style="background:#C9973F"></div><div style="background:#A85A2E"></div><div style="background:#6E1423"></div>
+        </div>
+        <span>rendah → tinggi (relatif terhadap data yang sudah masuk)</span>
+        <span style="margin-left:auto;">Klik kecamatan pada peta untuk ringkasan &amp; detail indikator</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 3: RINGKASAN -->
+  <section class="tabpanel" id="tab-ringkasan">
+    <div class="panel">
+      <div class="panel-head"><h2>Format Ringkasan (Admin)</h2><span class="panel-num">TEMPLATE</span></div>
+      <div class="panel-body">
+        <p style="font-size:12.5px; color:#514637;">Template di bawah ini bisa disesuaikan nanti sesuai format resmi yang diinginkan. Gunakan placeholder seperti <code>{{total_laporan}}</code>, <code>{{total_kejadian}}</code>, <code>{{kecamatan_terbanyak}}</code>, <code>{{dimensi_teratas}}</code> — akan diganti otomatis dengan data terkini.</p>
+        <textarea class="template" id="ringkasanTemplate"></textarea>
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <button class="btn" id="saveTemplateBtn">Simpan Template</button>
+          <button class="btn btn-ghost" id="resetTemplateBtn">Kembalikan ke Default</button>
+        </div>
+        <div class="ringkasan-output" id="ringkasanOutput"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 4: INFOGRAFIS -->
+  <section class="tabpanel" id="tab-infografis">
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>Sebaran Kejadian per Dimensi</h3>
+        <canvas id="chartDimensi"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Sebaran Kejadian per Kecamatan (Top 15)</h3>
+        <canvas id="chartKecamatan"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Sebaran per Sub Dimensi</h3>
+        <canvas id="chartSubdimensi"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>10 Indikator Paling Sering Terjadi</h3>
+        <canvas id="chartTopIndikator"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Basis data: Cloudflare D1 · Klasifikasi: Gemini API (langsung dari browser)</span>
+    <span id="last-updated">—</span>
+  </footer>
+</main>
+
+<div id="overlay"></div>
+<div id="drawer">
+  <div class="drawer-head">
+    <button class="drawer-close" id="drawerClose">TUTUP ✕</button>
+    <div class="kec-name" id="d-kec-name">—</div>
+    <div class="kec-sub" id="d-kec-sub">—</div>
+  </div>
+  <div class="drawer-body" id="d-body"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+const GEMINI_MODEL = "gemini-flash-latest";
+
+/* ============ STATE ============ */
+let INDIKATOR = [];       // 61 {no, dimensi, sub_dimensi, indikator}
+let KEC_DESA = {};        // {kecamatan: [desa,...]}
+let KECAMATAN_LIST = [];
+let GEOJSON = null;
+let LAPORAN = [];
+let KEJADIAN = [];
+let map, geoLayer;
+const kecLayerByName = {};
+let charts = {};
+
+/* ============ API KEY (localStorage) ============ */
+function getApiKeys(){
+  const raw = localStorage.getItem('gemini_api_keys') || '';
+  return raw.split(',').map(k=>k.trim()).filter(Boolean);
+}
+function setApiKeys(raw){
+  localStorage.setItem('gemini_api_keys', raw);
+  refreshApiKeyStatus();
+}
+function refreshApiKeyStatus(){
+  const keys = getApiKeys();
+  const el = document.getElementById('apiKeyStatus');
+  const input = document.getElementById('apiKeyInput');
+  if(keys.length){
+    el.textContent = keys.length + ' kunci tersimpan';
+    el.className = 'apikey-status ok';
+    input.value = keys.join(', ');
+  } else {
+    el.textContent = 'belum diisi';
+    el.className = 'apikey-status bad';
+  }
+}
+document.getElementById('saveKeyBtn').onclick = () => {
+  setApiKeys(document.getElementById('apiKeyInput').value);
+};
+
+/* ============ TAB SWITCH ============ */
+document.querySelectorAll('.tabbtn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tabbtn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab === 'peta' && map){ setTimeout(()=>map.invalidateSize(), 50); }
+    if(btn.dataset.tab === 'infografis'){ renderInfografis(); }
+    if(btn.dataset.tab === 'ringkasan'){ renderRingkasan(); }
+  });
+});
+
+/* ============ DATA LOADING ============ */
+async function loadStaticData(){
+  const [indRes, desaRes, geoRes] = await Promise.all([
+    fetch('./data/ikp-indikator.json').then(r=>r.json()),
+    fetch('./data/kecamatan-desa.json').then(r=>r.json()),
+    fetch('./data/kecamatan-malang.geojson').then(r=>r.json())
+  ]);
+  INDIKATOR = indRes;
+  KEC_DESA = desaRes;
+  KECAMATAN_LIST = Object.keys(KEC_DESA);
+  GEOJSON = geoRes;
+}
+
+async function loadServerData(){
+  const res = await fetch('/api/laporan');
+  if(!res.ok) throw new Error('gagal memuat /api/laporan (' + res.status + ')');
+  const data = await res.json();
+  LAPORAN = data.laporan || [];
+  KEJADIAN = data.kejadian || [];
+}
+async function saveLaporan(laporan, kejadian){
+  const res = await fetch('/api/laporan', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ laporan, kejadian })
+  });
+  if(!res.ok){
+    const d = await res.json().catch(()=>({}));
+    throw new Error('gagal menyimpan laporan (' + res.status + ') ' + (d.error||''));
+  }
+}
+
+/* ============ LOG UI ============ */
+function logItem(status, title, meta){
+  const log = document.getElementById('log');
+  const el = document.createElement('div');
+  el.className = 'log-item ' + status;
+  el.innerHTML = '<span class="fn">'+title+'</span><span class="meta">'+(meta||'')+'</span>';
+  log.prepend(el);
+  return el;
+}
+
+/* ============ PDF TEXT EXTRACTION ============ */
+async function extractPdfText(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  let text = '';
+  for(let p=1; p<=pdf.numPages; p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    text += content.items.map(i=>i.str).join(' ') + '\n';
+  }
+  return text;
+}
+
+/* ============ GEMINI CLASSIFY (langsung dari browser, dengan rotasi key) ============ */
+function buildSystemPrompt(){
+  const indikatorRingkas = INDIKATOR.map(i => `${i.no}. [${i.dimensi} / ${i.sub_dimensi}] ${i.indikator}`).join('\n');
+  return `Anda adalah sistem ekstraksi data untuk Form A "Laporan Hasil Pengawasan Pemilu/Pemilihan" milik Bawaslu Kabupaten Malang.
+Anda akan menerima teks mentah hasil ekstraksi PDF (urutan kata bisa sedikit berantakan karena posisi layout).
+
+Daftar 33 kecamatan beserta desa/kelurahannya (gunakan PERSIS nama ini):
+${JSON.stringify(KEC_DESA)}
+
+Daftar 61 indikator IKP (Indeks Kerawanan Pemilu) yang harus Anda cocokkan:
+${indikatorRingkas}
+
+Kembalikan HANYA satu objek JSON valid, tanpa markdown, tanpa penjelasan, dengan skema persis:
+{
+ "nomor_lhp": string atau null,
+ "tanggal": string atau null,
+ "kecamatan": salah satu nama kecamatan PERSIS dari daftar di atas,
+ "tahapan_diawasi": string ringkas atau null,
+ "nama_pengawas": string atau null,
+ "jabatan_pengawas": string atau null,
+ "kejadian": array berisi 0 atau lebih objek { "indicator_no": <angka 1-61 dari daftar di atas>, "desa": "<nama desa PERSIS dari daftar kecamatan yang dipilih, atau null jika tidak spesifik>", "catatan": "<ringkasan singkat 1 kalimat buatan Anda sendiri>" }
+}
+
+Aturan penting:
+- Isi array "kejadian" HANYA untuk hal yang benar-benar disebutkan sebagai dugaan pelanggaran/temuan/ketidaksesuaian dalam dokumen. Kalau laporan murni pengawasan rutin tanpa temuan, kembalikan array kosong [].
+- Satu laporan boleh memuat beberapa kejadian sekaligus (misalnya temuan yang sama terjadi di beberapa desa berbeda — buat satu entri kejadian per desa).
+- Jangan mengarang data yang tidak ada di dokumen.`;
+}
+
+function isQuotaError(status, data){
+  if(status === 429) return true;
+  return data?.error?.status === 'RESOURCE_EXHAUSTED';
+}
+
+async function classifyWithGemini(text, fileName){
+  const keys = getApiKeys();
+  if(!keys.length) throw new Error('Isi dulu Gemini API Key di bagian atas halaman ini');
+  const userText = `Nama berkas: ${fileName}\n\nTeks dokumen:\n${text.slice(0, 15000)}`;
+
+  let lastErr = null;
+  for(let i=0; i<keys.length; i++){
+    const key = keys[i];
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
+    let resp, data;
+    try{
+      resp = await fetch(url, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: buildSystemPrompt() }] },
+          contents: [{ parts: [{ text: userText }] }],
+          generationConfig: { responseMimeType: 'application/json' }
+        })
+      });
+      data = await resp.json();
+    }catch(networkErr){
+      lastErr = new Error('Gagal menghubungi Gemini: ' + networkErr.message);
+      continue;
+    }
+    if(!resp.ok){
+      if(isQuotaError(resp.status, data) && i < keys.length - 1){
+        lastErr = new Error('Kunci #' + (i+1) + ' kena limit, mencoba kunci berikutnya...');
+        continue;
+      }
+      throw new Error('Gemini API error: ' + (data?.error?.message || resp.status));
+    }
+    const candidate = data?.candidates?.[0];
+    if(!candidate) throw new Error('Gemini tidak mengembalikan kandidat jawaban');
+    const textBlock = (candidate.content?.parts || []).filter(p=>!p.thought).map(p=>p.text||'').join('');
+    if(!textBlock.trim()) throw new Error('Respons Gemini kosong (finishReason: ' + candidate.finishReason + ')');
+    const clean = textBlock.replace(/```json|```/g,'').trim();
+    try{
+      return JSON.parse(clean);
+    }catch(parseErr){
+      throw new Error('Gagal parse JSON dari Gemini: ' + parseErr.message);
+    }
+  }
+  throw lastErr || new Error('Semua kunci API gagal / kena limit');
+}
+
+/* ============ PIPELINE ============ */
+async function handleFiles(files){
+  for(const file of files){
+    if(file.type !== 'application/pdf'){
+      logItem('err', file.name, 'bukan berkas PDF — dilewati');
+      continue;
+    }
+    const item = logItem('busy', file.name, 'mengekstrak teks PDF…');
+    try{
+      const text = await extractPdfText(file);
+      item.querySelector('.meta').textContent = 'mengklasifikasikan via Gemini…';
+      const extracted = await classifyWithGemini(text, file.name);
+      const id = 'lap_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
+      const laporan = {
+        id, fileName: file.name, processedAt: new Date().toISOString(),
+        nomor_lhp: extracted.nomor_lhp || null,
+        tanggal: extracted.tanggal || null,
+        kecamatan: extracted.kecamatan || null,
+        tahapan_diawasi: extracted.tahapan_diawasi || null,
+        nama_pengawas: extracted.nama_pengawas || null,
+        jabatan_pengawas: extracted.jabatan_pengawas || null
+      };
+      const kejadianList = (extracted.kejadian || []).map(k => ({
+        indicator_no: k.indicator_no, kecamatan: extracted.kecamatan || null, desa: k.desa || null, catatan: k.catatan || null
+      }));
+      await saveLaporan(laporan, kejadianList);
+      LAPORAN.push(laporan);
+      kejadianList.forEach((k, idx) => KEJADIAN.push({ ...k, id: id+'_k'+idx, laporan_id: id }));
+      item.className = 'log-item ok';
+      item.querySelector('.meta').textContent = `✓ ${laporan.kecamatan || '?'} — ${kejadianList.length} kejadian tercatat`;
+      renderAll();
+    }catch(e){
+      console.error(e);
+      item.className = 'log-item err';
+      item.querySelector('.meta').textContent = 'gagal: ' + (e.message||e);
+    }
+  }
+  document.getElementById('last-updated').textContent = 'Terakhir diperbarui: ' + new Date().toLocaleString('id-ID');
+}
+
+/* ============ AGGREGATION HELPERS ============ */
+function countByKecamatanIndicator(kecamatan, indicatorNo){
+  return KEJADIAN.filter(k => k.kecamatan === kecamatan && k.indicator_no === indicatorNo).length;
+}
+function totalByKecamatan(kecamatan){
+  return KEJADIAN.filter(k => k.kecamatan === kecamatan).length;
+}
+function totalByIndicator(indicatorNo){
+  return KEJADIAN.filter(k => k.indicator_no === indicatorNo).length;
+}
+function laporanCountByKecamatan(kecamatan){
+  return LAPORAN.filter(l => l.kecamatan === kecamatan).length;
+}
+
+/* ============ TAB 1: MATRIX TABLE ============ */
+function renderMatrix(){
+  document.getElementById('matrix-meta').textContent = LAPORAN.length + ' LAPORAN · ' + KEJADIAN.length + ' KEJADIAN';
+  let lastDim = null, lastSub = null;
+  let thead = '<thead><tr><th class="col-no">No</th><th class="col-ind">Indikator</th>';
+  KECAMATAN_LIST.forEach(k => { thead += `<th class="kec-head" title="${k}">${k}</th>`; });
+  thead += '<th class="total-col">Jumlah</th></tr></thead>';
+
+  let tbody = '<tbody>';
+  INDIKATOR.forEach(ind => {
+    if(ind.dimensi !== lastDim){
+      tbody += `<tr class="dim-row"><td colspan="${KECAMATAN_LIST.length+3}">${ind.dimensi}</td></tr>`;
+      lastDim = ind.dimensi; lastSub = null;
+    }
+    if(ind.sub_dimensi !== lastSub){
+      tbody += `<tr class="sub-row"><td colspan="${KECAMATAN_LIST.length+3}">${ind.sub_dimensi}</td></tr>`;
+      lastSub = ind.sub_dimensi;
+    }
+    tbody += `<tr><td class="col-no">${ind.no}</td><td class="col-ind">${ind.indikator}</td>`;
+    let total = 0;
+    KECAMATAN_LIST.forEach(kec => {
+      const n = countByKecamatanIndicator(kec, ind.no);
+      total += n;
+      tbody += `<td class="${n>0?'hit':''}">${n||''}</td>`;
+    });
+    tbody += `<td class="total-col">${total||0}</td></tr>`;
+  });
+  tbody += '</tbody>';
+
+  document.getElementById('matrix-wrap').innerHTML = `<table class="matrix">${thead}${tbody}</table>`;
+}
+
+/* ============ MAP ============ */
+function colorForCount(n, max){
+  if(n<=0) return '#EFE9DA';
+  const scale = ['#EFE9DA','#E3C88F','#C9973F','#A85A2E','#6E1423'];
+  const ratio = max>0 ? n/max : 0;
+  const idx = Math.min(scale.length-1, Math.ceil(ratio*(scale.length-1)));
+  return scale[idx];
+}
+function initMap(){
+  map = L.map('map', {scrollWheelZoom:false}).setView([-8.25, 112.75], 10);
+  geoLayer = L.geoJSON(GEOJSON, {
+    style: feature => styleForFeature(feature),
+    onEachFeature: (feature, layer) => {
+      const name = feature.properties.kecamatan;
+      kecLayerByName[name] = layer;
+      layer.on('click', () => openKecamatanPopup(name, layer));
+      layer.on('mouseover', () => layer.setStyle({weight:2.5, color:'#201B16'}));
+      layer.on('mouseout', () => layer.setStyle({weight:1, color:'#514637'}));
+    }
+  }).addTo(map);
+  try{ map.fitBounds(geoLayer.getBounds(), {padding:[10,10]}); }catch(e){}
+}
+function styleForFeature(feature){
+  const name = feature.properties.kecamatan;
+  const maxViol = Math.max(1, ...KECAMATAN_LIST.map(k=>totalByKecamatan(k)));
+  return { fillColor: colorForCount(totalByKecamatan(name), maxViol), fillOpacity:0.85, color:'#514637', weight:1 };
+}
+function openKecamatanPopup(name, layer){
+  const html = `<div class="popup-inner">
+    <h4>Kec. ${name}</h4>
+    <div class="popup-row"><span>Jumlah laporan</span><b>${laporanCountByKecamatan(name)}</b></div>
+    <div class="popup-row"><span>Jumlah kejadian</span><b>${totalByKecamatan(name)}</b></div>
+    <button class="popup-btn" onclick="openDrawer('${name.replace(/'/g,"\\'")}')">LIHAT DETAIL INDIKATOR →</button>
+  </div>`;
+  layer.bindPopup(html).openPopup();
+}
+
+/* ============ DRAWER ============ */
+function openDrawer(name){
+  document.getElementById('d-kec-name').textContent = 'Kec. ' + name;
+  document.getElementById('d-kec-sub').textContent = laporanCountByKecamatan(name) + ' laporan · ' + totalByKecamatan(name) + ' kejadian';
+
+  const byDim = {};
+  INDIKATOR.forEach(ind => {
+    const n = countByKecamatanIndicator(name, ind.no);
+    if(n <= 0) return;
+    if(!byDim[ind.dimensi]) byDim[ind.dimensi] = [];
+    byDim[ind.dimensi].push({ ...ind, n });
+  });
+
+  let body = '';
+  const dims = Object.keys(byDim);
+  if(!dims.length){
+    body = '<div class="empty-note">Belum ada kejadian tercatat untuk kecamatan ini.</div>';
+  } else {
+    dims.forEach(dim => {
+      const items = byDim[dim].sort((a,b)=>b.n-a.n);
+      const max = Math.max(...items.map(i=>i.n));
+      body += `<div class="dsec"><h3>${dim}</h3>`;
+      items.forEach(it => {
+        const pct = Math.round((it.n/max)*100);
+        body += `<div class="barrow"><span class="lbl" title="${it.indikator}">${it.no}. ${it.indikator}</span><div class="track"><div class="fill" style="width:${pct}%"></div></div><span class="cnt">${it.n}</span></div>`;
+      });
+      body += '</div>';
+    });
+  }
+
+  const desaSet = new Set(KEJADIAN.filter(k=>k.kecamatan===name && k.desa).map(k=>k.desa));
+  if(desaSet.size){
+    body += `<div class="dsec"><h3>Desa Terdampak</h3><div style="display:flex; flex-wrap:wrap; gap:5px;">${Array.from(desaSet).map(d=>`<span class="tag" style="font-size:10.5px; font-family:'IBM Plex Mono',monospace; border:1px solid var(--line); padding:2px 6px; background:var(--paper);">${d}</span>`).join('')}</div></div>`;
+  }
+
+  document.getElementById('d-body').innerHTML = body;
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('overlay').classList.add('show');
+}
+document.getElementById('drawerClose').onclick = closeDrawer;
+document.getElementById('overlay').onclick = closeDrawer;
+function closeDrawer(){
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+/* ============ TAB 3: RINGKASAN ============ */
+const DEFAULT_TEMPLATE = `RINGKASAN HASIL PENGOLAHAN DATA LAPORAN HASIL PENGAWASAN (LHP)
+Kabupaten Malang
+
+Total laporan yang diproses: {{total_laporan}}
+Total kejadian/temuan tercatat: {{total_kejadian}}
+Kecamatan dengan kejadian terbanyak: {{kecamatan_terbanyak}}
+Dimensi IKP paling dominan: {{dimensi_teratas}}
+
+(Format ini masih sementara — dapat disesuaikan kembali sesuai kebutuhan resmi Bawaslu Kabupaten Malang.)`;
+
+function loadTemplate(){
+  return localStorage.getItem('ringkasan_template') || DEFAULT_TEMPLATE;
+}
+document.getElementById('saveTemplateBtn').onclick = () => {
+  localStorage.setItem('ringkasan_template', document.getElementById('ringkasanTemplate').value);
+  renderRingkasan();
+};
+document.getElementById('resetTemplateBtn').onclick = () => {
+  document.getElementById('ringkasanTemplate').value = DEFAULT_TEMPLATE;
+  localStorage.setItem('ringkasan_template', DEFAULT_TEMPLATE);
+  renderRingkasan();
+};
+function renderRingkasan(){
+  document.getElementById('ringkasanTemplate').value = loadTemplate();
+  const kecCounts = KECAMATAN_LIST.map(k=>({k, n: totalByKecamatan(k)})).sort((a,b)=>b.n-a.n);
+  const dimCounts = {};
+  KEJADIAN.forEach(k => {
+    const ind = INDIKATOR.find(i=>i.no===k.indicator_no);
+    if(!ind) return;
+    dimCounts[ind.dimensi] = (dimCounts[ind.dimensi]||0)+1;
+  });
+  const topDim = Object.entries(dimCounts).sort((a,b)=>b[1]-a[1])[0];
+
+  let out = loadTemplate();
+  out = out.replace(/{{total_laporan}}/g, LAPORAN.length);
+  out = out.replace(/{{total_kejadian}}/g, KEJADIAN.length);
+  out = out.replace(/{{kecamatan_terbanyak}}/g, kecCounts[0] && kecCounts[0].n>0 ? `${kecCounts[0].k} (${kecCounts[0].n} kejadian)` : '—');
+  out = out.replace(/{{dimensi_teratas}}/g, topDim ? `${topDim[0]} (${topDim[1]} kejadian)` : '—');
+  document.getElementById('ringkasanOutput').textContent = out;
+}
+
+/* ============ TAB 4: INFOGRAFIS ============ */
+function destroyChart(key){ if(charts[key]){ charts[key].destroy(); delete charts[key]; } }
+function renderInfografis(){
+  const dimCounts = {};
+  const subCounts = {};
+  const indCounts = {};
+  KEJADIAN.forEach(k => {
+    const ind = INDIKATOR.find(i=>i.no===k.indicator_no);
+    if(!ind) return;
+    dimCounts[ind.dimensi] = (dimCounts[ind.dimensi]||0)+1;
+    subCounts[ind.sub_dimensi] = (subCounts[ind.sub_dimensi]||0)+1;
+    indCounts[ind.no] = (indCounts[ind.no]||0)+1;
+  });
+  const kecCounts = KECAMATAN_LIST.map(k=>({k, n: totalByKecamatan(k)})).sort((a,b)=>b.n-a.n).slice(0,15);
+  const topIndikator = Object.entries(indCounts).sort((a,b)=>b[1]-a[1]).slice(0,10)
+    .map(([no,n]) => ({ label: INDIKATOR.find(i=>i.no==no)?.indikator || no, n }));
+
+  const palette = ['#6E1423','#AD8A3A','#33564E','#A85A2E','#8A2A1F','#C9973F','#4A0E18','#E3C88F'];
+
+  destroyChart('dimensi');
+  charts.dimensi = new Chart(document.getElementById('chartDimensi'), {
+    type:'doughnut',
+    data:{ labels:Object.keys(dimCounts), datasets:[{ data:Object.values(dimCounts), backgroundColor:palette }] },
+    options:{ plugins:{ legend:{ position:'bottom', labels:{ font:{ size:10 } } } } }
+  });
+
+  destroyChart('kecamatan');
+  charts.kecamatan = new Chart(document.getElementById('chartKecamatan'), {
+    type:'bar',
+    data:{ labels:kecCounts.map(x=>x.k), datasets:[{ label:'Jumlah kejadian', data:kecCounts.map(x=>x.n), backgroundColor:'#6E1423' }] },
+    options:{ indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true, ticks:{ precision:0 } } } }
+  });
+
+  destroyChart('subdimensi');
+  charts.subdimensi = new Chart(document.getElementById('chartSubdimensi'), {
+    type:'bar',
+    data:{ labels:Object.keys(subCounts), datasets:[{ label:'Jumlah kejadian', data:Object.values(subCounts), backgroundColor:'#AD8A3A' }] },
+    options:{ plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ font:{ size:9 } } }, y:{ beginAtZero:true, ticks:{ precision:0 } } } }
+  });
+
+  destroyChart('topindikator');
+  charts.topindikator = new Chart(document.getElementById('chartTopIndikator'), {
+    type:'bar',
+    data:{ labels:topIndikator.map(x=>x.label), datasets:[{ label:'Jumlah kejadian', data:topIndikator.map(x=>x.n), backgroundColor:'#33564E' }] },
+    options:{ indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true, ticks:{ precision:0 } } } }
+  });
+}
+
+/* ============ RENDER ALL ============ */
+function renderAll(){
+  renderMatrix();
+  if(geoLayer){ geoLayer.eachLayer(l => l.setStyle(styleForFeature(l.feature))); }
+}
+
+/* ============ INIT ============ */
+async function init(){
+  refreshApiKeyStatus();
+  await loadStaticData();
+  initMap();
+  document.getElementById('status-text').textContent = 'memuat data tersimpan…';
+  try{
+    await loadServerData();
+    document.getElementById('status-text').textContent = LAPORAN.length + ' laporan termuat';
+  }catch(e){
+    document.getElementById('status-text').textContent = 'gagal memuat data (lihat konsol)';
+    console.error(e);
+  }
+  renderAll();
+  if(LAPORAN.length){
+    document.getElementById('last-updated').textContent = 'Terakhir diperbarui: ' + new Date().toLocaleString('id-ID');
+  }
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  dropzone.addEventListener('click', ()=>fileInput.click());
+  fileInput.addEventListener('change', e => handleFiles(Array.from(e.target.files)));
+  ['dragover','dragenter'].forEach(evt=>dropzone.addEventListener(evt, e=>{e.preventDefault(); dropzone.classList.add('dragover');}));
+  ['dragleave','drop'].forEach(evt=>dropzone.addEventListener(evt, e=>{e.preventDefault(); dropzone.classList.remove('dragover');}));
+  dropzone.addEventListener('drop', e=>{ e.preventDefault(); handleFiles(Array.from(e.dataTransfer.files)); });
+}
+init();
+</script>
+</body>
+</html>
