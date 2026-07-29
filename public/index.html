@@ -11,33 +11,33 @@
   :root{
     --paper:#F1EDE3;
     --paper-deep:#E7E1D2;
-    --ink:#201B16;
-    --maroon:#6E1423;
-    --maroon-deep:#4A0E18;
-    --gold:#AD8A3A;
-    --gold-bright:#C9A227;
-    --teal:#33564E;
+    --ink:#1A1F2B;
+    --maroon:#13294B;        /* biru dongker (navy) - warna utama */
+    --maroon-deep:#0A1830;   /* navy lebih gelap */
+    --gold:#E2711D;          /* oranye - warna aksen */
+    --gold-bright:#F79320;   /* oranye terang */
+    --teal:#2F6690;          /* biru pendukung */
     --line:#C9BFA8;
     --white:#FBFAF6;
-    --danger:#8A2A1F;
+    --danger:#B3261E;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
     background:var(--paper);
-    background-image:radial-gradient(circle at 1px 1px, rgba(32,27,22,0.05) 1px, transparent 0);
+    background-image:radial-gradient(circle at 1px 1px, rgba(19,41,75,0.05) 1px, transparent 0);
     background-size: 22px 22px;
     color:var(--ink);
     font-family:'IBM Plex Sans', sans-serif;
     min-height:100vh;
   }
   a{color:inherit;}
-  ::selection{background:var(--gold-bright); color:var(--ink);}
+  ::selection{background:var(--gold-bright); color:var(--white);}
 
   .masthead{
     border-bottom:3px double var(--ink);
     background:var(--white);
-    padding:22px 28px 0;
+    padding:18px 28px 0;
     position:relative;
   }
   .masthead::before{
@@ -49,7 +49,7 @@
   .masthead-inner{
     max-width:1400px; margin:0 auto;
     display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap;
-    padding-bottom:16px;
+    padding-bottom:12px;
   }
   .eyebrow{
     font-family:'IBM Plex Mono', monospace;
@@ -68,6 +68,18 @@
   }
   .status-dot{width:8px;height:8px;border-radius:50%;background:var(--teal);}
 
+  /* Queue progress bar (persisten, terlihat di semua tab) */
+  .queue-bar{
+    max-width:1400px; margin:0 auto; padding:0 28px 10px; display:none;
+  }
+  .queue-bar.show{display:block;}
+  .queue-bar-inner{
+    background:var(--maroon); color:var(--white); padding:8px 14px;
+    display:flex; align-items:center; gap:12px; font-family:'IBM Plex Mono',monospace; font-size:11.5px;
+  }
+  .queue-track{flex:1; height:8px; background:rgba(255,255,255,0.25);}
+  .queue-fill{height:100%; background:var(--gold-bright); width:0%; transition:width .2s;}
+
   /* Tab nav */
   .tabnav{
     max-width:1400px; margin:0 auto; display:flex; gap:2px;
@@ -82,14 +94,14 @@
   .tabbtn.active{
     background:var(--paper); color:var(--ink); font-weight:600; border-color:var(--ink);
   }
-  .tabbtn .n{color:var(--maroon); margin-right:6px;}
+  .tabbtn .n{color:var(--maroon); margin-right:6px; font-weight:700;}
 
   main{max-width:1400px; margin:0 auto; padding:24px 28px 40px;}
   .tabpanel{display:none;}
   .tabpanel.active{display:block;}
 
   .panel{
-    background:var(--white); border:1px solid var(--line); box-shadow: 4px 4px 0 rgba(32,27,22,0.06);
+    background:var(--white); border:1px solid var(--line); box-shadow: 4px 4px 0 rgba(19,41,75,0.08);
   }
   .panel-head{
     display:flex; align-items:center; justify-content:space-between; padding:12px 16px;
@@ -112,10 +124,12 @@
   .apikey-box .hint{font-size:10.5px; color:#8a7f6a; width:100%;}
   .btn{
     font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.04em;
-    border:1px solid var(--ink); background:var(--ink); color:var(--white); padding:7px 14px; cursor:pointer;
+    border:1px solid var(--maroon); background:var(--maroon); color:var(--white); padding:7px 14px; cursor:pointer;
   }
   .btn:hover{background:var(--maroon-deep); border-color:var(--maroon-deep);}
-  .btn-ghost{background:var(--paper); color:var(--ink);}
+  .btn-orange{background:var(--gold); border-color:var(--gold);}
+  .btn-orange:hover{background:var(--gold-bright); border-color:var(--gold-bright);}
+  .btn-ghost{background:var(--paper); color:var(--ink); border-color:var(--line);}
   .btn-ghost:hover{background:var(--paper-deep);}
   .apikey-status{font-family:'IBM Plex Mono',monospace; font-size:11px;}
   .apikey-status.ok{color:var(--teal);}
@@ -124,11 +138,11 @@
   /* Upload */
   .intake-zone{
     border:2px dashed var(--maroon);
-    background:repeating-linear-gradient(135deg, rgba(110,20,35,0.03) 0 10px, transparent 10px 20px);
+    background:repeating-linear-gradient(135deg, rgba(19,41,75,0.04) 0 10px, transparent 10px 20px);
     padding:22px 16px; text-align:center; cursor:pointer; transition:background .15s;
   }
-  .intake-zone:hover{background:rgba(110,20,35,0.06);}
-  .intake-zone.dragover{background:rgba(173,138,58,0.15); border-color:var(--gold-bright);}
+  .intake-zone:hover{background:rgba(19,41,75,0.07);}
+  .intake-zone.dragover{background:rgba(226,113,29,0.15); border-color:var(--gold-bright);}
   .intake-zone .stamp{
     font-family:'IBM Plex Mono',monospace; display:inline-block; border:2px solid var(--maroon);
     color:var(--maroon); padding:4px 10px; font-size:11px; letter-spacing:.1em; transform:rotate(-3deg); margin-bottom:8px;
@@ -166,11 +180,11 @@
     font-size:12.5px; text-align:left; position:sticky; left:0;
   }
   table.matrix .sub-row td{
-    background:var(--gold); color:var(--ink); font-weight:700; text-align:left; font-size:11px;
+    background:var(--gold); color:var(--white); font-weight:700; text-align:left; font-size:11px;
     position:sticky; left:0;
   }
-  table.matrix .total-col{background:#F3E9D8; font-weight:700;}
-  table.matrix td.hit{background:#F6D9C6; color:var(--maroon-deep); font-weight:700;}
+  table.matrix .total-col{background:#FBE4CB; font-weight:700;}
+  table.matrix td.hit{background:#FBE4CB; color:var(--maroon-deep); font-weight:700;}
 
   /* Map */
   #map{height:560px; width:100%; background:#dcd6c4;}
@@ -182,14 +196,14 @@
   .legend-scale div{flex:1;}
   .leaflet-popup-content-wrapper{border-radius:0; border:1px solid var(--ink); font-family:'IBM Plex Sans',sans-serif;}
   .popup-inner{min-width:190px;}
-  .popup-inner h4{font-family:'Source Serif 4',serif; margin:0 0 6px; font-size:16px;}
+  .popup-inner h4{font-family:'Source Serif 4',serif; margin:0 0 6px; font-size:16px; color:var(--maroon);}
   .popup-row{display:flex; justify-content:space-between; font-size:12px; padding:2px 0;}
   .popup-btn{margin-top:8px; width:100%; padding:6px; background:var(--maroon); color:#fff; border:none; font-family:'IBM Plex Mono',monospace; font-size:11px; cursor:pointer; letter-spacing:.05em;}
   .popup-btn:hover{background:var(--maroon-deep);}
 
   /* Drawer */
-  #overlay{position:fixed; inset:0; background:rgba(20,16,12,0.35); display:none; z-index:998;}
-  #drawer{position:fixed; top:0; right:-560px; width:540px; max-width:92vw; height:100vh; background:var(--white); border-left:3px double var(--ink); z-index:999; transition:right .25s ease; overflow-y:auto;}
+  #overlay{position:fixed; inset:0; background:rgba(10,15,25,0.4); display:none; z-index:998;}
+  #drawer{position:fixed; top:0; right:-680px; width:660px; max-width:94vw; height:100vh; background:var(--white); border-left:3px double var(--ink); z-index:999; transition:right .25s ease; overflow-y:auto;}
   #drawer.open{right:0;}
   #overlay.show{display:block;}
   .drawer-head{padding:18px 22px; border-bottom:1px solid var(--line); background:var(--maroon-deep); color:var(--white); position:sticky; top:0; z-index:2;}
@@ -197,33 +211,34 @@
   .drawer-head .kec-sub{font-size:12px; opacity:.85; font-family:'IBM Plex Mono',monospace; margin-top:2px;}
   .drawer-close{position:absolute; top:16px; right:18px; cursor:pointer; font-family:'IBM Plex Mono',monospace; font-size:12px; border:1px solid rgba(255,255,255,.5); padding:4px 8px; color:var(--white); background:transparent;}
   .drawer-body{padding:20px 22px;}
-  .dsec{margin-bottom:18px;}
-  .dsec h3{font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--maroon); margin:0 0 8px; border-bottom:1px solid var(--line); padding-bottom:6px;}
-  .dsec h4{font-size:11.5px; font-weight:700; color:var(--gold); margin:10px 0 4px;}
-  .kv{display:flex; justify-content:space-between; font-size:13px; padding:4px 0; border-bottom:1px dotted var(--line);}
-  .kv b{font-family:'Source Serif 4',serif; font-size:18px;}
-  .barrow{display:flex; align-items:center; gap:8px; font-size:11.5px; margin-bottom:5px;}
-  .barrow .lbl{width:180px; flex-shrink:0; font-size:11px;}
-  .barrow .track{flex:1; height:9px; background:var(--paper-deep); border:1px solid var(--line);}
-  .barrow .fill{height:100%; background:var(--maroon);}
-  .barrow .cnt{width:20px; text-align:right; font-family:'IBM Plex Mono',monospace; font-size:11px;}
+  table.detail-table{width:100%; border-collapse:collapse; font-size:11.5px;}
+  table.detail-table th, table.detail-table td{border:1px solid var(--line); padding:6px 8px; text-align:left; vertical-align:top;}
+  table.detail-table thead th{background:var(--paper-deep); font-family:'IBM Plex Mono',monospace; font-size:10.5px;}
+  table.detail-table .dim-row td{background:var(--maroon); color:var(--white); font-weight:700; font-family:'Source Serif 4',serif;}
+  table.detail-table .col-jml{text-align:center; font-weight:700; color:var(--maroon-deep); width:36px;}
+  table.detail-table .col-catatan{font-size:11px; color:#514637;}
+  table.detail-table .col-catatan ul{margin:0; padding-left:16px;}
   .empty-note{font-size:12.5px; color:#8a7f6a; font-style:italic;}
+  .tag{font-size:10.5px; font-family:'IBM Plex Mono',monospace; border:1px solid var(--line); padding:2px 6px; background:var(--paper);}
 
   /* Ringkasan tab */
-  textarea.template{
-    width:100%; min-height:220px; font-family:'IBM Plex Mono',monospace; font-size:12.5px;
-    border:1px solid var(--line); padding:12px; background:var(--paper);
+  .ringkasan-grid{display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start;}
+  @media (max-width:900px){ .ringkasan-grid{grid-template-columns:1fr;} }
+  textarea.ai-prompt{
+    width:100%; min-height:280px; font-family:'IBM Plex Sans',sans-serif; font-size:13px;
+    border:1px solid var(--line); padding:12px; background:var(--paper); line-height:1.5;
   }
   .ringkasan-output{
-    white-space:pre-wrap; font-family:'IBM Plex Sans',sans-serif; font-size:13.5px; line-height:1.6;
-    background:var(--paper); border:1px solid var(--line); padding:16px; margin-top:14px;
+    white-space:pre-wrap; font-family:'IBM Plex Sans',sans-serif; font-size:13px; line-height:1.7;
+    background:var(--paper); border:1px solid var(--line); padding:16px; min-height:280px; max-height:520px; overflow-y:auto;
   }
+  .output-actions{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;}
 
   /* Infografis */
   .chart-grid{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
   @media (max-width:900px){ .chart-grid{grid-template-columns:1fr;} }
-  .chart-card{background:var(--white); border:1px solid var(--line); padding:16px;}
-  .chart-card h3{font-family:'Source Serif 4',serif; font-size:15px; margin:0 0 12px;}
+  .chart-card{background:var(--white); border:1px solid var(--line); padding:16px; min-height:320px;}
+  .chart-card h3{font-family:'Source Serif 4',serif; font-size:15px; margin:0 0 12px; color:var(--maroon);}
   canvas{max-width:100%;}
 
   footer{
@@ -253,30 +268,38 @@
   </div>
 </div>
 
+<div class="queue-bar" id="queueBar">
+  <div class="queue-bar-inner">
+    <span id="queueLabel">Memproses 0/0 laporan…</span>
+    <div class="queue-track"><div class="queue-fill" id="queueFill"></div></div>
+    <span id="queueDone" style="cursor:pointer; text-decoration:underline;">tutup</span>
+  </div>
+</div>
+
 <main>
 
   <!-- TAB 1: INPUT -->
   <section class="tabpanel active" id="tab-input">
     <div class="apikey-box">
       <div style="flex:1; min-width:280px;">
-        <label>Gemini API Key (disimpan di browser ini, bisa diganti kapan saja)</label>
+        <label>Gemini API Key (disimpan di browser ini, bisa diganti kapan saja — boleh isi banyak sekaligus)</label>
         <div style="display:flex; gap:8px;">
-          <input type="text" id="apiKeyInput" placeholder="AIzaSy... (boleh lebih dari satu, pisahkan koma untuk rotasi otomatis saat kuota habis)">
+          <input type="text" id="apiKeyInput" placeholder="AIzaSy...key1, AIzaSy...key2, AIzaSy...key3 (pisahkan koma, otomatis bergantian)">
           <button class="btn" id="saveKeyBtn">Simpan</button>
         </div>
       </div>
       <span class="apikey-status" id="apiKeyStatus">belum diisi</span>
-      <div class="hint">Kunci ini hanya tersimpan di browser Anda (localStorage), tidak dikirim ke server manapun selain langsung ke Google. Dapatkan gratis di aistudio.google.com/apikey</div>
+      <div class="hint">Kunci hanya tersimpan di browser Anda (localStorage). Setiap file diproses dengan kunci berikutnya secara bergantian (round-robin), supaya beban merata di semua kunci. Dapatkan gratis di aistudio.google.com/apikey</div>
     </div>
 
     <div class="panel">
-      <div class="panel-head"><h2>Unggah Form A</h2><span class="panel-num">PDF LHP</span></div>
+      <div class="panel-head"><h2>Unggah Form A</h2><span class="panel-num">Maks. 250 PDF sekaligus</span></div>
       <div class="panel-body">
         <div class="intake-zone" id="dropzone">
           <div class="stamp">LHP · FORM A</div>
           <div class="big">Seret berkas PDF ke sini</div>
-          <p>atau klik untuk memilih file (bisa lebih dari satu sekaligus)</p>
-          <p style="font-size:11px; color:#8a7f6a;">Teks diekstrak di peramban Anda, lalu diklasifikasikan langsung ke Gemini berdasarkan 61 indikator IKP.</p>
+          <p>atau klik untuk memilih file — bisa sampai 250 PDF sekaligus, diproses satu per satu di latar belakang</p>
+          <p style="font-size:11px; color:#8a7f6a;">Anda boleh pindah tab atau tunggu sambil melakukan hal lain — proses tetap berjalan dan bisa dipantau lewat bilah progres di atas.</p>
           <input type="file" id="fileInput" accept="application/pdf" multiple style="display:none;">
         </div>
         <div class="log" id="log"></div>
@@ -298,8 +321,8 @@
       <div class="legend-bar">
         <span>Kepadatan kejadian:</span>
         <div class="legend-scale">
-          <div style="background:#EFE9DA"></div><div style="background:#E3C88F"></div>
-          <div style="background:#C9973F"></div><div style="background:#A85A2E"></div><div style="background:#6E1423"></div>
+          <div style="background:#EFE9DA"></div><div style="background:#F7C59F"></div>
+          <div style="background:#F2994E"></div><div style="background:#D35400"></div><div style="background:#13294B"></div>
         </div>
         <span>rendah → tinggi (relatif terhadap data yang sudah masuk)</span>
         <span style="margin-left:auto;">Klik kecamatan pada peta untuk ringkasan &amp; detail indikator</span>
@@ -310,15 +333,27 @@
   <!-- TAB 3: RINGKASAN -->
   <section class="tabpanel" id="tab-ringkasan">
     <div class="panel">
-      <div class="panel-head"><h2>Format Ringkasan (Admin)</h2><span class="panel-num">TEMPLATE</span></div>
+      <div class="panel-head"><h2>Ringkasan Hasil Pengolahan Data LHP</h2><span class="panel-num">AI-GENERATED</span></div>
       <div class="panel-body">
-        <p style="font-size:12.5px; color:#514637;">Template di bawah ini bisa disesuaikan nanti sesuai format resmi yang diinginkan. Gunakan placeholder seperti <code>{{total_laporan}}</code>, <code>{{total_kejadian}}</code>, <code>{{kecamatan_terbanyak}}</code>, <code>{{dimensi_teratas}}</code> — akan diganti otomatis dengan data terkini.</p>
-        <textarea class="template" id="ringkasanTemplate"></textarea>
-        <div style="margin-top:10px; display:flex; gap:8px;">
-          <button class="btn" id="saveTemplateBtn">Simpan Template</button>
-          <button class="btn btn-ghost" id="resetTemplateBtn">Kembalikan ke Default</button>
+        <div class="ringkasan-grid">
+          <div>
+            <label style="font-size:11px; font-family:'IBM Plex Mono',monospace; color:#6b6050; display:block; margin-bottom:6px;">PROMPT AI (bisa disunting sesuai kebutuhan)</label>
+            <textarea class="ai-prompt" id="aiPromptInput"></textarea>
+            <div class="output-actions">
+              <button class="btn btn-orange" id="prosesAIBtn">▶ Proses dengan AI</button>
+              <button class="btn btn-ghost" id="resetPromptBtn">Kembalikan Prompt Default</button>
+            </div>
+            <div class="apikey-status" id="ringkasanStatus" style="margin-top:8px;"></div>
+          </div>
+          <div>
+            <label style="font-size:11px; font-family:'IBM Plex Mono',monospace; color:#6b6050; display:block; margin-bottom:6px;">HASIL</label>
+            <div class="ringkasan-output" id="ringkasanOutput">Klik "Proses dengan AI" untuk menghasilkan ringkasan berdasarkan data yang sudah masuk.</div>
+            <div class="output-actions">
+              <button class="btn" id="viewPdfBtn" disabled>Lihat sebagai PDF</button>
+              <button class="btn btn-ghost" id="downloadWordBtn" disabled>Unduh sebagai Word</button>
+            </div>
+          </div>
         </div>
-        <div class="ringkasan-output" id="ringkasanOutput"></div>
       </div>
     </div>
   </section>
@@ -364,21 +399,24 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
 const GEMINI_MODEL = "gemini-flash-latest";
+const MAX_FILES_PER_BATCH = 250;
 
 /* ============ STATE ============ */
-let INDIKATOR = [];       // 61 {no, dimensi, sub_dimensi, indikator}
-let KEC_DESA = {};        // {kecamatan: [desa,...]}
+let INDIKATOR = [];
+let KEC_DESA = {};
 let KECAMATAN_LIST = [];
 let GEOJSON = null;
 let LAPORAN = [];
 let KEJADIAN = [];
-let map, geoLayer;
+let map, geoLayer, mapInitialized = false;
 const kecLayerByName = {};
 let charts = {};
+let keyCursor = 0;
 
 /* ============ API KEY (localStorage) ============ */
 function getApiKeys(){
@@ -413,9 +451,18 @@ document.querySelectorAll('.tabbtn').forEach(btn=>{
     document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
-    if(btn.dataset.tab === 'peta' && map){ setTimeout(()=>map.invalidateSize(), 50); }
-    if(btn.dataset.tab === 'infografis'){ renderInfografis(); }
-    if(btn.dataset.tab === 'ringkasan'){ renderRingkasan(); }
+    if(btn.dataset.tab === 'peta'){
+      if(!mapInitialized){ initMap(); }
+      requestAnimationFrame(()=>{
+        setTimeout(()=>{
+          map.invalidateSize();
+          try{ map.fitBounds(geoLayer.getBounds(), {padding:[10,10]}); }catch(e){}
+        }, 60);
+      });
+    }
+    if(btn.dataset.tab === 'infografis'){
+      requestAnimationFrame(()=> setTimeout(renderInfografis, 30));
+    }
   });
 });
 
@@ -431,7 +478,6 @@ async function loadStaticData(){
   KECAMATAN_LIST = Object.keys(KEC_DESA);
   GEOJSON = geoRes;
 }
-
 async function loadServerData(){
   const res = await fetch('/api/laporan');
   if(!res.ok) throw new Error('gagal memuat /api/laporan (' + res.status + ')');
@@ -461,6 +507,24 @@ function logItem(status, title, meta){
   return el;
 }
 
+/* ============ QUEUE PROGRESS UI (persisten lintas tab) ============ */
+function queueShow(total){
+  document.getElementById('queueBar').classList.add('show');
+  document.getElementById('queueLabel').textContent = `Memproses 0/${total} laporan…`;
+  document.getElementById('queueFill').style.width = '0%';
+}
+function queueUpdate(done, total){
+  document.getElementById('queueLabel').textContent = `Memproses ${done}/${total} laporan…`;
+  document.getElementById('queueFill').style.width = Math.round((done/total)*100) + '%';
+}
+function queueFinish(ok, fail){
+  document.getElementById('queueLabel').textContent = `Selesai — ${ok} berhasil, ${fail} gagal.`;
+  document.getElementById('queueFill').style.width = '100%';
+}
+document.getElementById('queueDone').onclick = () => {
+  document.getElementById('queueBar').classList.remove('show');
+};
+
 /* ============ PDF TEXT EXTRACTION ============ */
 async function extractPdfText(file){
   const buf = await file.arrayBuffer();
@@ -474,8 +538,55 @@ async function extractPdfText(file){
   return text;
 }
 
-/* ============ GEMINI CLASSIFY (langsung dari browser, dengan rotasi key) ============ */
-function buildSystemPrompt(){
+/* ============ GEMINI: helper umum (dipakai klasifikasi & ringkasan AI) ============ */
+function isQuotaError(status, data){
+  if(status === 429) return true;
+  return data?.error?.status === 'RESOURCE_EXHAUSTED';
+}
+function nextKeyStartIndex(keys){
+  const start = keyCursor % keys.length;
+  keyCursor++;
+  return start;
+}
+async function callGemini(systemPrompt, userText, jsonMode){
+  const keys = getApiKeys();
+  if(!keys.length) throw new Error('Isi dulu Gemini API Key di bagian atas halaman Tab 1');
+  const startIdx = nextKeyStartIndex(keys);
+  let lastErr = null;
+  for(let step=0; step<keys.length; step++){
+    const idx = (startIdx+step) % keys.length;
+    const key = keys[idx];
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
+    let resp, data;
+    try{
+      const body = {
+        contents: [{ parts: [{ text: userText }] }]
+      };
+      if(systemPrompt) body.system_instruction = { parts: [{ text: systemPrompt }] };
+      if(jsonMode) body.generationConfig = { responseMimeType: 'application/json' };
+      resp = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      data = await resp.json();
+    }catch(networkErr){
+      lastErr = new Error('Gagal menghubungi Gemini: ' + networkErr.message);
+      continue;
+    }
+    if(!resp.ok){
+      if(isQuotaError(resp.status, data) && step < keys.length-1){
+        lastErr = new Error('Kunci #' + (idx+1) + ' kena limit, mencoba kunci berikutnya...');
+        continue;
+      }
+      throw new Error('Gemini API error: ' + (data?.error?.message || resp.status));
+    }
+    const candidate = data?.candidates?.[0];
+    if(!candidate) throw new Error('Gemini tidak mengembalikan kandidat jawaban');
+    const textBlock = (candidate.content?.parts || []).filter(p=>!p.thought).map(p=>p.text||'').join('');
+    if(!textBlock.trim()) throw new Error('Respons Gemini kosong (finishReason: ' + candidate.finishReason + ')');
+    return textBlock;
+  }
+  throw lastErr || new Error('Semua kunci API gagal / kena limit');
+}
+
+function buildClassifyPrompt(){
   const indikatorRingkas = INDIKATOR.map(i => `${i.no}. [${i.dimensi} / ${i.sub_dimensi}] ${i.indikator}`).join('\n');
   return `Anda adalah sistem ekstraksi data untuk Form A "Laporan Hasil Pengawasan Pemilu/Pemilihan" milik Bawaslu Kabupaten Malang.
 Anda akan menerima teks mentah hasil ekstraksi PDF (urutan kata bisa sedikit berantakan karena posisi layout).
@@ -502,65 +613,30 @@ Aturan penting:
 - Satu laporan boleh memuat beberapa kejadian sekaligus (misalnya temuan yang sama terjadi di beberapa desa berbeda — buat satu entri kejadian per desa).
 - Jangan mengarang data yang tidak ada di dokumen.`;
 }
-
-function isQuotaError(status, data){
-  if(status === 429) return true;
-  return data?.error?.status === 'RESOURCE_EXHAUSTED';
-}
-
 async function classifyWithGemini(text, fileName){
-  const keys = getApiKeys();
-  if(!keys.length) throw new Error('Isi dulu Gemini API Key di bagian atas halaman ini');
   const userText = `Nama berkas: ${fileName}\n\nTeks dokumen:\n${text.slice(0, 15000)}`;
-
-  let lastErr = null;
-  for(let i=0; i<keys.length; i++){
-    const key = keys[i];
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
-    let resp, data;
-    try{
-      resp = await fetch(url, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: buildSystemPrompt() }] },
-          contents: [{ parts: [{ text: userText }] }],
-          generationConfig: { responseMimeType: 'application/json' }
-        })
-      });
-      data = await resp.json();
-    }catch(networkErr){
-      lastErr = new Error('Gagal menghubungi Gemini: ' + networkErr.message);
-      continue;
-    }
-    if(!resp.ok){
-      if(isQuotaError(resp.status, data) && i < keys.length - 1){
-        lastErr = new Error('Kunci #' + (i+1) + ' kena limit, mencoba kunci berikutnya...');
-        continue;
-      }
-      throw new Error('Gemini API error: ' + (data?.error?.message || resp.status));
-    }
-    const candidate = data?.candidates?.[0];
-    if(!candidate) throw new Error('Gemini tidak mengembalikan kandidat jawaban');
-    const textBlock = (candidate.content?.parts || []).filter(p=>!p.thought).map(p=>p.text||'').join('');
-    if(!textBlock.trim()) throw new Error('Respons Gemini kosong (finishReason: ' + candidate.finishReason + ')');
-    const clean = textBlock.replace(/```json|```/g,'').trim();
-    try{
-      return JSON.parse(clean);
-    }catch(parseErr){
-      throw new Error('Gagal parse JSON dari Gemini: ' + parseErr.message);
-    }
+  const textBlock = await callGemini(buildClassifyPrompt(), userText, true);
+  const clean = textBlock.replace(/```json|```/g,'').trim();
+  try{
+    return JSON.parse(clean);
+  }catch(parseErr){
+    throw new Error('Gagal parse JSON dari Gemini: ' + parseErr.message);
   }
-  throw lastErr || new Error('Semua kunci API gagal / kena limit');
 }
 
-/* ============ PIPELINE ============ */
+/* ============ PIPELINE (antrian, sekuensial, kunci bergantian) ============ */
 async function handleFiles(files){
-  for(const file of files){
-    if(file.type !== 'application/pdf'){
-      logItem('err', file.name, 'bukan berkas PDF — dilewati');
-      continue;
-    }
+  if(files.length > MAX_FILES_PER_BATCH){
+    logItem('err', 'Batas terlampaui', `Anda memilih ${files.length} file — maksimal ${MAX_FILES_PER_BATCH} sekaligus. Hanya ${MAX_FILES_PER_BATCH} file pertama yang diproses.`);
+    files = files.slice(0, MAX_FILES_PER_BATCH);
+  }
+  const pdfFiles = files.filter(f => f.type === 'application/pdf');
+  const total = pdfFiles.length;
+  if(!total) return;
+  queueShow(total);
+  let doneCount = 0, okCount = 0, failCount = 0;
+
+  for(const file of pdfFiles){
     const item = logItem('busy', file.name, 'mengekstrak teks PDF…');
     try{
       const text = await extractPdfText(file);
@@ -584,13 +660,18 @@ async function handleFiles(files){
       kejadianList.forEach((k, idx) => KEJADIAN.push({ ...k, id: id+'_k'+idx, laporan_id: id }));
       item.className = 'log-item ok';
       item.querySelector('.meta').textContent = `✓ ${laporan.kecamatan || '?'} — ${kejadianList.length} kejadian tercatat`;
+      okCount++;
       renderAll();
     }catch(e){
       console.error(e);
       item.className = 'log-item err';
       item.querySelector('.meta').textContent = 'gagal: ' + (e.message||e);
+      failCount++;
     }
+    doneCount++;
+    queueUpdate(doneCount, total);
   }
+  queueFinish(okCount, failCount);
   document.getElementById('last-updated').textContent = 'Terakhir diperbarui: ' + new Date().toLocaleString('id-ID');
 }
 
@@ -600,9 +681,6 @@ function countByKecamatanIndicator(kecamatan, indicatorNo){
 }
 function totalByKecamatan(kecamatan){
   return KEJADIAN.filter(k => k.kecamatan === kecamatan).length;
-}
-function totalByIndicator(indicatorNo){
-  return KEJADIAN.filter(k => k.indicator_no === indicatorNo).length;
 }
 function laporanCountByKecamatan(kecamatan){
   return LAPORAN.filter(l => l.kecamatan === kecamatan).length;
@@ -636,19 +714,19 @@ function renderMatrix(){
     tbody += `<td class="total-col">${total||0}</td></tr>`;
   });
   tbody += '</tbody>';
-
   document.getElementById('matrix-wrap').innerHTML = `<table class="matrix">${thead}${tbody}</table>`;
 }
 
 /* ============ MAP ============ */
 function colorForCount(n, max){
   if(n<=0) return '#EFE9DA';
-  const scale = ['#EFE9DA','#E3C88F','#C9973F','#A85A2E','#6E1423'];
+  const scale = ['#EFE9DA','#F7C59F','#F2994E','#D35400','#13294B'];
   const ratio = max>0 ? n/max : 0;
   const idx = Math.min(scale.length-1, Math.ceil(ratio*(scale.length-1)));
   return scale[idx];
 }
 function initMap(){
+  mapInitialized = true;
   map = L.map('map', {scrollWheelZoom:false}).setView([-8.25, 112.75], 10);
   geoLayer = L.geoJSON(GEOJSON, {
     style: feature => styleForFeature(feature),
@@ -656,11 +734,14 @@ function initMap(){
       const name = feature.properties.kecamatan;
       kecLayerByName[name] = layer;
       layer.on('click', () => openKecamatanPopup(name, layer));
-      layer.on('mouseover', () => layer.setStyle({weight:2.5, color:'#201B16'}));
+      layer.on('mouseover', () => layer.setStyle({weight:2.5, color:'#13294B'}));
       layer.on('mouseout', () => layer.setStyle({weight:1, color:'#514637'}));
     }
   }).addTo(map);
-  try{ map.fitBounds(geoLayer.getBounds(), {padding:[10,10]}); }catch(e){}
+  setTimeout(()=>{
+    map.invalidateSize();
+    try{ map.fitBounds(geoLayer.getBounds(), {padding:[10,10]}); }catch(e){}
+  }, 80);
 }
 function styleForFeature(feature){
   const name = feature.properties.kecamatan;
@@ -677,39 +758,42 @@ function openKecamatanPopup(name, layer){
   layer.bindPopup(html).openPopup();
 }
 
-/* ============ DRAWER ============ */
+/* ============ DRAWER: tabel indikator yang punya kejadian saja ============ */
 function openDrawer(name){
   document.getElementById('d-kec-name').textContent = 'Kec. ' + name;
   document.getElementById('d-kec-sub').textContent = laporanCountByKecamatan(name) + ' laporan · ' + totalByKecamatan(name) + ' kejadian';
 
-  const byDim = {};
+  const rows = [];
   INDIKATOR.forEach(ind => {
-    const n = countByKecamatanIndicator(name, ind.no);
-    if(n <= 0) return;
-    if(!byDim[ind.dimensi]) byDim[ind.dimensi] = [];
-    byDim[ind.dimensi].push({ ...ind, n });
+    const matches = KEJADIAN.filter(k => k.kecamatan===name && k.indicator_no===ind.no);
+    if(matches.length>0){
+      rows.push({ ...ind, n: matches.length, catatan: matches.map(m=>m.catatan).filter(Boolean) });
+    }
   });
 
   let body = '';
-  const dims = Object.keys(byDim);
-  if(!dims.length){
+  if(!rows.length){
     body = '<div class="empty-note">Belum ada kejadian tercatat untuk kecamatan ini.</div>';
   } else {
-    dims.forEach(dim => {
-      const items = byDim[dim].sort((a,b)=>b.n-a.n);
-      const max = Math.max(...items.map(i=>i.n));
-      body += `<div class="dsec"><h3>${dim}</h3>`;
-      items.forEach(it => {
-        const pct = Math.round((it.n/max)*100);
-        body += `<div class="barrow"><span class="lbl" title="${it.indikator}">${it.no}. ${it.indikator}</span><div class="track"><div class="fill" style="width:${pct}%"></div></div><span class="cnt">${it.n}</span></div>`;
-      });
-      body += '</div>';
+    let lastDim = null;
+    let tableRows = '';
+    rows.forEach(r => {
+      if(r.dimensi !== lastDim){
+        tableRows += `<tr class="dim-row"><td colspan="4">${r.dimensi}</td></tr>`;
+        lastDim = r.dimensi;
+      }
+      const catatanHtml = r.catatan.length ? `<ul>${r.catatan.map(c=>`<li>${c}</li>`).join('')}</ul>` : '—';
+      tableRows += `<tr><td>${r.no}</td><td>${r.indikator}</td><td class="col-jml">${r.n}</td><td class="col-catatan">${catatanHtml}</td></tr>`;
     });
+    body = `<table class="detail-table">
+      <thead><tr><th style="width:30px;">No</th><th>Indikator</th><th style="width:40px;">Jml</th><th>Ringkasan Kejadian</th></tr></thead>
+      <tbody>${tableRows}</tbody>
+    </table>`;
   }
 
   const desaSet = new Set(KEJADIAN.filter(k=>k.kecamatan===name && k.desa).map(k=>k.desa));
   if(desaSet.size){
-    body += `<div class="dsec"><h3>Desa Terdampak</h3><div style="display:flex; flex-wrap:wrap; gap:5px;">${Array.from(desaSet).map(d=>`<span class="tag" style="font-size:10.5px; font-family:'IBM Plex Mono',monospace; border:1px solid var(--line); padding:2px 6px; background:var(--paper);">${d}</span>`).join('')}</div></div>`;
+    body += `<div style="margin-top:16px;"><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--maroon); margin-bottom:6px; text-transform:uppercase; letter-spacing:.06em;">Desa Terdampak</div><div style="display:flex; flex-wrap:wrap; gap:5px;">${Array.from(desaSet).map(d=>`<span class="tag">${d}</span>`).join('')}</div></div>`;
   }
 
   document.getElementById('d-body').innerHTML = body;
@@ -723,54 +807,109 @@ function closeDrawer(){
   document.getElementById('overlay').classList.remove('show');
 }
 
-/* ============ TAB 3: RINGKASAN ============ */
-const DEFAULT_TEMPLATE = `RINGKASAN HASIL PENGOLAHAN DATA LAPORAN HASIL PENGAWASAN (LHP)
-Kabupaten Malang
+/* ============ TAB 3: RINGKASAN AI ============ */
+const DEFAULT_PROMPT = `Buatkan RINGKASAN HASIL PENGOLAHAN DATA Laporan Hasil Pengawasan (LHP) Pemilu untuk Bawaslu Kabupaten Malang, berdasarkan data rekapitulasi yang disertakan di bawah.
 
-Total laporan yang diproses: {{total_laporan}}
-Total kejadian/temuan tercatat: {{total_kejadian}}
-Kecamatan dengan kejadian terbanyak: {{kecamatan_terbanyak}}
-Dimensi IKP paling dominan: {{dimensi_teratas}}
+Gunakan bahasa Indonesia formal kedinasan. Struktur laporan:
+1. Ringkasan Umum (total laporan, total kejadian/temuan)
+2. Analisis per Dimensi IKP (dimensi mana yang paling rawan, dengan angka)
+3. Sebaran Wilayah (kecamatan dengan kejadian terbanyak)
+4. Indikator yang Paling Sering Muncul
+5. Kesimpulan dan Rekomendasi Tindak Lanjut
 
-(Format ini masih sementara — dapat disesuaikan kembali sesuai kebutuhan resmi Bawaslu Kabupaten Malang.)`;
+Tulis dalam paragraf yang mengalir, bukan hanya daftar poin, tapi boleh memakai sub-judul.`;
 
-function loadTemplate(){
-  return localStorage.getItem('ringkasan_template') || DEFAULT_TEMPLATE;
-}
-document.getElementById('saveTemplateBtn').onclick = () => {
-  localStorage.setItem('ringkasan_template', document.getElementById('ringkasanTemplate').value);
-  renderRingkasan();
-};
-document.getElementById('resetTemplateBtn').onclick = () => {
-  document.getElementById('ringkasanTemplate').value = DEFAULT_TEMPLATE;
-  localStorage.setItem('ringkasan_template', DEFAULT_TEMPLATE);
-  renderRingkasan();
-};
-function renderRingkasan(){
-  document.getElementById('ringkasanTemplate').value = loadTemplate();
-  const kecCounts = KECAMATAN_LIST.map(k=>({k, n: totalByKecamatan(k)})).sort((a,b)=>b.n-a.n);
-  const dimCounts = {};
+function gatherDataSummary(){
+  const dimCounts = {}, subCounts = {}, indCounts = {};
   KEJADIAN.forEach(k => {
     const ind = INDIKATOR.find(i=>i.no===k.indicator_no);
     if(!ind) return;
     dimCounts[ind.dimensi] = (dimCounts[ind.dimensi]||0)+1;
+    subCounts[ind.sub_dimensi] = (subCounts[ind.sub_dimensi]||0)+1;
+    indCounts[ind.no] = (indCounts[ind.no]||0)+1;
   });
-  const topDim = Object.entries(dimCounts).sort((a,b)=>b[1]-a[1])[0];
-
-  let out = loadTemplate();
-  out = out.replace(/{{total_laporan}}/g, LAPORAN.length);
-  out = out.replace(/{{total_kejadian}}/g, KEJADIAN.length);
-  out = out.replace(/{{kecamatan_terbanyak}}/g, kecCounts[0] && kecCounts[0].n>0 ? `${kecCounts[0].k} (${kecCounts[0].n} kejadian)` : '—');
-  out = out.replace(/{{dimensi_teratas}}/g, topDim ? `${topDim[0]} (${topDim[1]} kejadian)` : '—');
-  document.getElementById('ringkasanOutput').textContent = out;
+  const kecCounts = KECAMATAN_LIST.map(k=>({kecamatan:k, jumlah: totalByKecamatan(k)})).filter(x=>x.jumlah>0).sort((a,b)=>b.jumlah-a.jumlah);
+  const topIndikator = Object.entries(indCounts).sort((a,b)=>b[1]-a[1]).slice(0,10)
+    .map(([no,n]) => ({ no:Number(no), indikator: INDIKATOR.find(i=>i.no==no)?.indikator || '', jumlah:n }));
+  return {
+    total_laporan: LAPORAN.length,
+    total_kejadian: KEJADIAN.length,
+    per_dimensi: dimCounts,
+    per_sub_dimensi: subCounts,
+    per_kecamatan: kecCounts,
+    top_10_indikator: topIndikator
+  };
 }
+
+let ringkasanAIText = '';
+
+document.getElementById('resetPromptBtn').onclick = () => {
+  document.getElementById('aiPromptInput').value = DEFAULT_PROMPT;
+};
+document.getElementById('prosesAIBtn').onclick = async () => {
+  const statusEl = document.getElementById('ringkasanStatus');
+  const outputEl = document.getElementById('ringkasanOutput');
+  const promptText = document.getElementById('aiPromptInput').value || DEFAULT_PROMPT;
+  statusEl.textContent = 'Memproses…'; statusEl.className = 'apikey-status';
+  document.getElementById('viewPdfBtn').disabled = true;
+  document.getElementById('downloadWordBtn').disabled = true;
+  try{
+    if(!LAPORAN.length){
+      throw new Error('Belum ada data laporan yang masuk — unggah PDF di Tab 1 terlebih dahulu.');
+    }
+    const summary = gatherDataSummary();
+    const userText = promptText + '\n\nDATA REKAPITULASI (JSON):\n' + JSON.stringify(summary, null, 1);
+    const result = await callGemini(null, userText, false);
+    ringkasanAIText = result.trim();
+    outputEl.textContent = ringkasanAIText;
+    statusEl.textContent = 'Selesai.'; statusEl.className = 'apikey-status ok';
+    document.getElementById('viewPdfBtn').disabled = false;
+    document.getElementById('downloadWordBtn').disabled = false;
+  }catch(e){
+    console.error(e);
+    statusEl.textContent = 'Gagal: ' + e.message; statusEl.className = 'apikey-status bad';
+  }
+};
+
+document.getElementById('viewPdfBtn').onclick = () => {
+  if(!ringkasanAIText) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'pt', format:'a4' });
+  const margin = 48;
+  const pageWidth = doc.internal.pageSize.getWidth() - margin*2;
+  const pageHeight = doc.internal.pageSize.getHeight() - margin*2;
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(11);
+  const lines = doc.splitTextToSize(ringkasanAIText, pageWidth);
+  let y = margin;
+  const lineHeight = 15;
+  lines.forEach(line => {
+    if(y > margin + pageHeight){ doc.addPage(); y = margin; }
+    doc.text(line, margin, y);
+    y += lineHeight;
+  });
+  const url = doc.output('bloburl');
+  window.open(url, '_blank');
+};
+
+document.getElementById('downloadWordBtn').onclick = () => {
+  if(!ringkasanAIText) return;
+  const paragraphs = ringkasanAIText.split('\n').map(p => `<p>${p.replace(/&/g,'&amp;').replace(/</g,'&lt;')||'&nbsp;'}</p>`).join('');
+  const htmlDoc = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+  <head><meta charset="utf-8"><title>Ringkasan LHP</title></head>
+  <body style="font-family:Calibri, Arial, sans-serif; font-size:12pt;">${paragraphs}</body></html>`;
+  const blob = new Blob(['\ufeff', htmlDoc], { type:'application/msword' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'ringkasan-lhp-kabupaten-malang.doc';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
 
 /* ============ TAB 4: INFOGRAFIS ============ */
 function destroyChart(key){ if(charts[key]){ charts[key].destroy(); delete charts[key]; } }
 function renderInfografis(){
-  const dimCounts = {};
-  const subCounts = {};
-  const indCounts = {};
+  const dimCounts = {}, subCounts = {}, indCounts = {};
   KEJADIAN.forEach(k => {
     const ind = INDIKATOR.find(i=>i.no===k.indicator_no);
     if(!ind) return;
@@ -782,7 +921,7 @@ function renderInfografis(){
   const topIndikator = Object.entries(indCounts).sort((a,b)=>b[1]-a[1]).slice(0,10)
     .map(([no,n]) => ({ label: INDIKATOR.find(i=>i.no==no)?.indikator || no, n }));
 
-  const palette = ['#6E1423','#AD8A3A','#33564E','#A85A2E','#8A2A1F','#C9973F','#4A0E18','#E3C88F'];
+  const palette = ['#13294B','#E2711D','#2F6690','#F79320','#0A1830','#F2994E','#4472A8','#D35400'];
 
   destroyChart('dimensi');
   charts.dimensi = new Chart(document.getElementById('chartDimensi'), {
@@ -794,21 +933,21 @@ function renderInfografis(){
   destroyChart('kecamatan');
   charts.kecamatan = new Chart(document.getElementById('chartKecamatan'), {
     type:'bar',
-    data:{ labels:kecCounts.map(x=>x.k), datasets:[{ label:'Jumlah kejadian', data:kecCounts.map(x=>x.n), backgroundColor:'#6E1423' }] },
+    data:{ labels:kecCounts.map(x=>x.k), datasets:[{ label:'Jumlah kejadian', data:kecCounts.map(x=>x.n), backgroundColor:'#13294B' }] },
     options:{ indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true, ticks:{ precision:0 } } } }
   });
 
   destroyChart('subdimensi');
   charts.subdimensi = new Chart(document.getElementById('chartSubdimensi'), {
     type:'bar',
-    data:{ labels:Object.keys(subCounts), datasets:[{ label:'Jumlah kejadian', data:Object.values(subCounts), backgroundColor:'#AD8A3A' }] },
+    data:{ labels:Object.keys(subCounts), datasets:[{ label:'Jumlah kejadian', data:Object.values(subCounts), backgroundColor:'#E2711D' }] },
     options:{ plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ font:{ size:9 } } }, y:{ beginAtZero:true, ticks:{ precision:0 } } } }
   });
 
   destroyChart('topindikator');
   charts.topindikator = new Chart(document.getElementById('chartTopIndikator'), {
     type:'bar',
-    data:{ labels:topIndikator.map(x=>x.label), datasets:[{ label:'Jumlah kejadian', data:topIndikator.map(x=>x.n), backgroundColor:'#33564E' }] },
+    data:{ labels:topIndikator.map(x=>x.label), datasets:[{ label:'Jumlah kejadian', data:topIndikator.map(x=>x.n), backgroundColor:'#2F6690' }] },
     options:{ indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true, ticks:{ precision:0 } } } }
   });
 }
@@ -822,8 +961,8 @@ function renderAll(){
 /* ============ INIT ============ */
 async function init(){
   refreshApiKeyStatus();
+  document.getElementById('aiPromptInput').value = DEFAULT_PROMPT;
   await loadStaticData();
-  initMap();
   document.getElementById('status-text').textContent = 'memuat data tersimpan…';
   try{
     await loadServerData();
