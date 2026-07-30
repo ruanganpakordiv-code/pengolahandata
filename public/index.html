@@ -345,7 +345,7 @@
           <div style="background:#F2994E"></div><div style="background:#D35400"></div><div style="background:#13294B"></div>
         </div>
         <span>rendah → tinggi (relatif terhadap data yang sudah masuk)</span>
-        <span style="margin-left:auto;">Klik kecamatan pada peta untuk ringkasan &amp; detail indikator</span>
+        <span style="margin-left:auto;">Klik kecamatan pada peta untuk ringkasan &amp; detail indikator · Peta © OpenStreetMap contributors</span>
       </div>
       <div class="legend-bar" id="legendKerawanan" style="display:none;">
         <span>Skor kerawanan (bobot Dimensi IKP: Konteks Sosial 27% · Penyelenggaraan 38% · Kontestasi 25% · Partisipasi 10%):</span>
@@ -354,9 +354,21 @@
           <div style="background:#F2994E"></div><div style="background:#D35400"></div><div style="background:#13294B"></div>
         </div>
         <span>&lt;10 sangat rendah → &gt;50 sangat tinggi</span>
-        <span style="margin-left:auto;">Klik kecamatan untuk lihat rincian skoring per dimensi</span>
+        <span style="margin-left:auto;">Klik kecamatan untuk lihat rincian skoring per dimensi · Peta © OpenStreetMap contributors</span>
       </div>
     </div>
+
+    <div class="panel-head" style="margin-top:22px; border:1px solid var(--line); border-bottom:none;">
+      <h2>Skor Kerawanan per Kecamatan</h2>
+      <span class="panel-num">METODE IKP · DIURUTKAN TERTINGGI</span>
+    </div>
+    <div class="matrix-wrap" id="kerawananKecamatanWrap" style="max-height:420px;"></div>
+
+    <div class="panel-head" style="margin-top:22px; border:1px solid var(--line); border-bottom:none;">
+      <h2>Skor Kerawanan per Dimensi (Kabupaten Malang)</h2>
+      <span class="panel-num">SEPERTI TABEL 4 LAPORAN</span>
+    </div>
+    <div class="matrix-wrap" id="kerawananDimensiWrap" style="max-height:300px;"></div>
   </section>
 
   <!-- TAB 3: RINGKASAN -->
@@ -842,6 +854,62 @@ function colorForKerawanan(skor, hasData){
   if(skor < 50) return '#D35400';
   return '#13294B';
 }
+function computeKerawananKabupaten(){
+  const total = KEJADIAN.length;
+  const jumlahPerDimensi = {};
+  Object.keys(BOBOT_DIMENSI).forEach(d => jumlahPerDimensi[d] = 0);
+  KEJADIAN.forEach(k => {
+    const ind = INDIKATOR.find(i => i.no === k.indicator_no);
+    if(ind && jumlahPerDimensi.hasOwnProperty(ind.dimensi)) jumlahPerDimensi[ind.dimensi]++;
+  });
+  const skorPerDimensi = {};
+  let totalSkor = 0;
+  Object.keys(BOBOT_DIMENSI).forEach(d => {
+    const skor = total > 0 ? (jumlahPerDimensi[d] / total) * BOBOT_DIMENSI[d] : 0;
+    skorPerDimensi[d] = skor;
+    totalSkor += skor;
+  });
+  return { total, jumlahPerDimensi, skorPerDimensi, totalSkor, kategori: total>0 ? kategoriKerawanan(totalSkor) : 'Belum Ada Data' };
+}
+function renderKerawananPerKecamatan(){
+  const rows = KECAMATAN_LIST.map(k => {
+    const kw = computeKerawanan(k);
+    return { kecamatan:k, laporan: laporanCountByKecamatan(k), kejadian: kw.total, skor: kw.totalSkor, kategori: kw.kategori };
+  }).sort((a,b)=>b.skor-a.skor);
+  const html = `<table class="matrix" style="min-width:0;">
+    <thead><tr>
+      <th style="text-align:left;">Kecamatan</th><th>Jumlah Laporan</th><th>Jumlah Kejadian</th><th>Skor Kerawanan</th><th>Kategori</th>
+    </tr></thead>
+    <tbody>${rows.map(r => `<tr>
+      <td style="text-align:left; font-family:'IBM Plex Sans',sans-serif;">${r.kecamatan}</td>
+      <td>${r.laporan}</td>
+      <td>${r.kejadian}</td>
+      <td class="total-col">${r.skor.toFixed(2)}</td>
+      <td>${r.kategori}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+  document.getElementById('kerawananKecamatanWrap').innerHTML = html;
+}
+function renderKerawananPerDimensi(){
+  const kw = computeKerawananKabupaten();
+  const html = `<table class="matrix" style="min-width:0;">
+    <thead><tr>
+      <th style="text-align:left;">Dimensi</th><th>Jumlah Kejadian</th><th>Bobot</th><th>Skor</th><th>Kontribusi</th>
+    </tr></thead>
+    <tbody>
+      ${Object.keys(BOBOT_DIMENSI).map(d => `<tr>
+        <td style="text-align:left; font-family:'IBM Plex Sans',sans-serif;">${d}</td>
+        <td>${kw.jumlahPerDimensi[d]}</td>
+        <td>${BOBOT_DIMENSI[d]}%</td>
+        <td>${kw.skorPerDimensi[d].toFixed(3)}</td>
+        <td>${kw.totalSkor>0 ? ((kw.skorPerDimensi[d]/kw.totalSkor)*100).toFixed(1)+'%' : '—'}</td>
+      </tr>`).join('')}
+      <tr class="dim-row"><td>Total</td><td>${kw.total}</td><td>100%</td><td>${kw.totalSkor.toFixed(2)}</td><td>${kw.kategori}</td></tr>
+    </tbody>
+  </table>
+  <div class="empty-note" style="padding:8px 12px;">Skor = (Jumlah Kejadian Dimensi ÷ Total Kejadian Kabupaten) × Bobot Dimensi. Kategori: &lt;10 Sangat Rendah, 10–20 Rendah, 20–35 Sedang, 35–50 Tinggi, &gt;50 Sangat Tinggi.</div>`;
+  document.getElementById('kerawananDimensiWrap').innerHTML = html;
+}
 
 /* ============ MAP ============ */
 function colorForCount(n, max){
@@ -853,9 +921,8 @@ function colorForCount(n, max){
 }
 function initMap(){
   mapInitialized = true;
-  map = L.map('map', {scrollWheelZoom:false}).setView([-8.25, 112.75], 10);
+  map = L.map('map', {scrollWheelZoom:false, attributionControl:false}).setView([-8.25, 112.75], 10);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 19
   }).addTo(map);
   geoLayer = L.geoJSON(GEOJSON, {
@@ -922,24 +989,7 @@ function openDrawer(name){
   document.getElementById('d-kec-name').textContent = 'Kec. ' + name;
   document.getElementById('d-kec-sub').textContent = laporanCountByKecamatan(name) + ' laporan · ' + totalByKecamatan(name) + ' kejadian';
 
-  const kw = computeKerawanan(name);
-  let body = `<div class="dsec"><h3>Skoring Kerawanan Pemilu (Metode IKP)</h3>
-    <div class="kv"><span>Skor Total</span><b>${kw.totalSkor.toFixed(2)}</b></div>
-    <div class="kv"><span>Kategori</span><b>${kw.kategori}</b></div>
-    <table class="detail-table" style="margin-top:8px;">
-      <thead><tr><th>Dimensi</th><th style="width:70px;">Jml Kejadian</th><th style="width:70px;">Bobot</th><th style="width:70px;">Skor</th><th style="width:70px;">Kontribusi</th></tr></thead>
-      <tbody>
-        ${Object.keys(BOBOT_DIMENSI).map(d => `<tr>
-          <td>${d}</td>
-          <td class="col-jml">${kw.jumlahPerDimensi[d]}</td>
-          <td class="col-jml">${BOBOT_DIMENSI[d]}%</td>
-          <td class="col-jml">${kw.skorPerDimensi[d].toFixed(3)}</td>
-          <td class="col-jml">${kw.totalSkor>0 ? ((kw.skorPerDimensi[d]/kw.totalSkor)*100).toFixed(1)+'%' : '—'}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>
-    <div class="empty-note" style="margin-top:6px;">Skor = (Jumlah Kejadian Dimensi ÷ Total Kejadian Kecamatan) × Bobot Dimensi. Kategori: &lt;10 Sangat Rendah, 10–20 Rendah, 20–35 Sedang, 35–50 Tinggi, &gt;50 Sangat Tinggi.</div>
-  </div>`;
+  let body = '';
 
   const rows = [];
   INDIKATOR.forEach(ind => {
@@ -1251,6 +1301,8 @@ function renderInfografis(){
 /* ============ RENDER ALL ============ */
 function renderAll(){
   renderMatrix();
+  renderKerawananPerKecamatan();
+  renderKerawananPerDimensi();
   if(geoLayer){ geoLayer.eachLayer(l => l.setStyle(styleForFeature(l.feature))); }
 }
 
