@@ -157,6 +157,12 @@
   .log-item.busy{border-left-color:var(--gold-bright);}
   .log-item .fn{font-weight:600;}
   .log-item .meta{color:#7a6f5c;}
+  .retry-btn{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.03em;
+    border:1px solid var(--danger); background:var(--white); color:var(--danger);
+    padding:3px 8px; cursor:pointer; white-space:nowrap;
+  }
+  .retry-btn:hover{background:var(--danger); color:var(--white);}
 
   /* REKAP matrix table */
   .matrix-wrap{overflow:auto; max-height:640px; border:1px solid var(--line); margin-top:18px;}
@@ -240,6 +246,12 @@
   .chart-card{background:var(--white); border:1px solid var(--line); padding:16px; min-height:320px;}
   .chart-card h3{font-family:'Source Serif 4',serif; font-size:15px; margin:0 0 12px; color:var(--maroon);}
   canvas{max-width:100%;}
+  .info-stat-card{
+    background:var(--maroon); color:var(--white); padding:16px; text-align:center; border:1px solid var(--maroon-deep);
+  }
+  .info-stat-card .v{font-family:'Source Serif 4',serif; font-size:32px; font-weight:700;}
+  .info-stat-card .l{font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; opacity:.85; margin-top:4px;}
+  .info-stat-card.orange{background:var(--gold);}
 
   footer{
     max-width:1400px; margin:30px auto 40px; padding:0 28px; font-size:11px; color:#7a6f5c;
@@ -284,12 +296,13 @@
       <div style="flex:1; min-width:280px;">
         <label>Gemini API Key (disimpan di browser ini, bisa diganti kapan saja — boleh isi banyak sekaligus)</label>
         <div style="display:flex; gap:8px;">
-          <input type="text" id="apiKeyInput" placeholder="AIzaSy...key1, AIzaSy...key2, AIzaSy...key3 (pisahkan koma, otomatis bergantian)">
+          <input type="text" id="apiKeyInput" placeholder="AIzaSy...key1, AIzaSy...key2, AIzaSy...key3 (pisahkan koma)">
           <button class="btn" id="saveKeyBtn">Simpan</button>
         </div>
       </div>
       <span class="apikey-status" id="apiKeyStatus">belum diisi</span>
-      <div class="hint">Kunci hanya tersimpan di browser Anda (localStorage). Setiap file diproses dengan kunci berikutnya secara bergantian (round-robin), supaya beban merata di semua kunci. Dapatkan gratis di aistudio.google.com/apikey</div>
+      <span class="apikey-status ok" id="activeKeyIndicator"></span>
+      <div class="hint">Kunci hanya tersimpan di browser Anda (localStorage). Kunci #1 dipakai terus sampai benar-benar kena limit kuota, baru otomatis pindah ke kunci #2, dan seterusnya (bukan bergantian acak). Dapatkan gratis di aistudio.google.com/apikey</div>
     </div>
 
     <div class="panel">
@@ -360,9 +373,24 @@
 
   <!-- TAB 4: INFOGRAFIS -->
   <section class="tabpanel" id="tab-infografis">
+
+    <div class="recap-grid" id="infografisStatCards" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:14px; margin-bottom:22px;"></div>
+
+    <div class="panel-head" style="border:1px solid var(--line); border-bottom:none;">
+      <h2>Jumlah Kejadian per Tingkat Pelapor</h2>
+      <span class="panel-num">SEPERTI GRAFIK 1–3 LAPORAN</span>
+    </div>
+    <div class="chart-grid" id="tingkatChartGrid" style="border:1px solid var(--line); border-top:none; padding:16px; margin-bottom:22px;"></div>
+
+    <div class="panel-head" style="border:1px solid var(--line); border-bottom:none;">
+      <h2>Potensi Pelanggaran per Dimensi, per Kecamatan</h2>
+      <span class="panel-num">SEPERTI GRAFIK 4–6 LAPORAN</span>
+    </div>
+    <div class="chart-grid" id="dimensiKecChartGrid" style="border:1px solid var(--line); border-top:none; padding:16px; margin-bottom:22px;"></div>
+
     <div class="chart-grid">
       <div class="chart-card">
-        <h3>Sebaran Kejadian per Dimensi</h3>
+        <h3>Sebaran Kejadian per Dimensi (Kabupaten)</h3>
         <canvas id="chartDimensi"></canvas>
       </div>
       <div class="chart-card">
@@ -376,6 +404,10 @@
       <div class="chart-card">
         <h3>10 Indikator Paling Sering Terjadi</h3>
         <canvas id="chartTopIndikator"></canvas>
+      </div>
+      <div class="chart-card" style="grid-column:1 / -1;">
+        <h3>Sebaran Indikator Terbanyak per Desa (seperti Grafik 7 laporan)</h3>
+        <canvas id="chartTopIndikatorDesa"></canvas>
       </div>
     </div>
   </section>
@@ -416,7 +448,7 @@ let KEJADIAN = [];
 let map, geoLayer, mapInitialized = false;
 const kecLayerByName = {};
 let charts = {};
-let keyCursor = 0;
+let currentKeyIndex = 0;
 
 /* ============ API KEY (localStorage) ============ */
 function getApiKeys(){
@@ -425,7 +457,9 @@ function getApiKeys(){
 }
 function setApiKeys(raw){
   localStorage.setItem('gemini_api_keys', raw);
+  currentKeyIndex = 0;
   refreshApiKeyStatus();
+  updateKeyIndicator();
 }
 function refreshApiKeyStatus(){
   const keys = getApiKeys();
@@ -502,19 +536,30 @@ function logItem(status, title, meta){
   const log = document.getElementById('log');
   const el = document.createElement('div');
   el.className = 'log-item ' + status;
-  el.innerHTML = '<span class="fn">'+title+'</span><span class="meta">'+(meta||'')+'</span>';
+  el.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><span class="fn">'+title+'</span><span class="retry-slot"></span></div><span class="meta">'+(meta||'')+'</span>';
   log.prepend(el);
   return el;
+}
+function setLogRetry(el, onRetry){
+  const slot = el.querySelector('.retry-slot');
+  slot.innerHTML = '';
+  if(onRetry){
+    const btn = document.createElement('button');
+    btn.className = 'retry-btn';
+    btn.textContent = '↻ Coba Lagi';
+    btn.onclick = onRetry;
+    slot.appendChild(btn);
+  }
 }
 
 /* ============ QUEUE PROGRESS UI (persisten lintas tab) ============ */
 function queueShow(total){
   document.getElementById('queueBar').classList.add('show');
-  document.getElementById('queueLabel').textContent = `Memproses 0/${total} laporan…`;
+  document.getElementById('queueLabel').textContent = `Memproses 0/${total} laporan… (jeda 5 detik antar-file karena permintaan tinggi/high demand)`;
   document.getElementById('queueFill').style.width = '0%';
 }
 function queueUpdate(done, total){
-  document.getElementById('queueLabel').textContent = `Memproses ${done}/${total} laporan…`;
+  document.getElementById('queueLabel').textContent = `Memproses ${done}/${total} laporan… (jeda 5 detik antar-file karena permintaan tinggi/high demand)`;
   document.getElementById('queueFill').style.width = Math.round((done/total)*100) + '%';
 }
 function queueFinish(ok, fail){
@@ -543,19 +588,21 @@ function isQuotaError(status, data){
   if(status === 429) return true;
   return data?.error?.status === 'RESOURCE_EXHAUSTED';
 }
-function nextKeyStartIndex(keys){
-  const start = keyCursor % keys.length;
-  keyCursor++;
-  return start;
+function updateKeyIndicator(){
+  const keys = getApiKeys();
+  const el = document.getElementById('activeKeyIndicator');
+  if(!el) return;
+  if(!keys.length){ el.textContent = ''; return; }
+  el.textContent = `Kunci aktif: #${Math.min(currentKeyIndex+1, keys.length)} dari ${keys.length}`;
 }
 async function callGemini(systemPrompt, userText, jsonMode){
   const keys = getApiKeys();
   if(!keys.length) throw new Error('Isi dulu Gemini API Key di bagian atas halaman Tab 1');
-  const startIdx = nextKeyStartIndex(keys);
-  let lastErr = null;
-  for(let step=0; step<keys.length; step++){
-    const idx = (startIdx+step) % keys.length;
-    const key = keys[idx];
+  if(currentKeyIndex >= keys.length) currentKeyIndex = keys.length - 1;
+
+  while(currentKeyIndex < keys.length){
+    const key = keys[currentKeyIndex];
+    updateKeyIndicator();
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
     let resp, data;
     try{
@@ -567,13 +614,16 @@ async function callGemini(systemPrompt, userText, jsonMode){
       resp = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
       data = await resp.json();
     }catch(networkErr){
-      lastErr = new Error('Gagal menghubungi Gemini: ' + networkErr.message);
-      continue;
+      throw new Error('Gagal menghubungi Gemini: ' + networkErr.message);
     }
     if(!resp.ok){
-      if(isQuotaError(resp.status, data) && step < keys.length-1){
-        lastErr = new Error('Kunci #' + (idx+1) + ' kena limit, mencoba kunci berikutnya...');
-        continue;
+      if(isQuotaError(resp.status, data)){
+        logItem('busy', 'Rotasi kunci API', `Kunci #${currentKeyIndex+1} sudah habis kuota — pindah ke kunci #${currentKeyIndex+2}…`);
+        currentKeyIndex++;
+        if(currentKeyIndex >= keys.length){
+          throw new Error('Semua kunci API sudah habis kuotanya');
+        }
+        continue; // langsung coba request yang sama dengan kunci berikutnya
       }
       throw new Error('Gemini API error: ' + (data?.error?.message || resp.status));
     }
@@ -583,8 +633,9 @@ async function callGemini(systemPrompt, userText, jsonMode){
     if(!textBlock.trim()) throw new Error('Respons Gemini kosong (finishReason: ' + candidate.finishReason + ')');
     return textBlock;
   }
-  throw lastErr || new Error('Semua kunci API gagal / kena limit');
+  throw new Error('Semua kunci API sudah habis kuotanya');
 }
+
 
 function buildClassifyPrompt(){
   const indikatorRingkas = INDIKATOR.map(i => `${i.no}. [${i.dimensi} / ${i.sub_dimensi}] ${i.indikator}`).join('\n');
@@ -624,7 +675,50 @@ async function classifyWithGemini(text, fileName){
   }
 }
 
-/* ============ PIPELINE (antrian, sekuensial, kunci bergantian) ============ */
+/* ============ PIPELINE (antrian sekuensial, jeda 5 detik, retry per file) ============ */
+function sleep(ms){ return new Promise(res => setTimeout(res, ms)); }
+
+async function processOneFile(file, existingLogEl){
+  const item = existingLogEl || logItem('busy', file.name, 'mengekstrak teks PDF…');
+  item.className = 'log-item busy';
+  item.querySelector('.meta').textContent = existingLogEl ? 'mencoba lagi — mengekstrak teks PDF…' : 'mengekstrak teks PDF…';
+  setLogRetry(item, null);
+  try{
+    const text = await extractPdfText(file);
+    item.querySelector('.meta').textContent = 'mengklasifikasikan via Gemini…';
+    const extracted = await classifyWithGemini(text, file.name);
+    const id = 'lap_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
+    const laporan = {
+      id, fileName: file.name, processedAt: new Date().toISOString(),
+      nomor_lhp: extracted.nomor_lhp || null,
+      tanggal: extracted.tanggal || null,
+      kecamatan: extracted.kecamatan || null,
+      tahapan_diawasi: extracted.tahapan_diawasi || null,
+      nama_pengawas: extracted.nama_pengawas || null,
+      jabatan_pengawas: extracted.jabatan_pengawas || null
+    };
+    const kejadianList = (extracted.kejadian || []).map(k => ({
+      indicator_no: k.indicator_no, kecamatan: extracted.kecamatan || null, desa: k.desa || null, catatan: k.catatan || null
+    }));
+    await saveLaporan(laporan, kejadianList);
+    LAPORAN.push(laporan);
+    kejadianList.forEach((k, idx) => KEJADIAN.push({ ...k, id: id+'_k'+idx, laporan_id: id }));
+    item.className = 'log-item ok';
+    item.querySelector('.meta').textContent = `✓ ${laporan.kecamatan || '?'} — ${kejadianList.length} kejadian tercatat`;
+    renderAll();
+    return true;
+  }catch(e){
+    console.error(e);
+    item.className = 'log-item err';
+    item.querySelector('.meta').textContent = 'gagal: ' + (e.message||e);
+    setLogRetry(item, () => {
+      item.querySelector('.meta').textContent = 'menunggu giliran coba lagi…';
+      processOneFile(file, item);
+    });
+    return false;
+  }
+}
+
 async function handleFiles(files){
   if(files.length > MAX_FILES_PER_BATCH){
     logItem('err', 'Batas terlampaui', `Anda memilih ${files.length} file — maksimal ${MAX_FILES_PER_BATCH} sekaligus. Hanya ${MAX_FILES_PER_BATCH} file pertama yang diproses.`);
@@ -636,44 +730,19 @@ async function handleFiles(files){
   queueShow(total);
   let doneCount = 0, okCount = 0, failCount = 0;
 
-  for(const file of pdfFiles){
-    const item = logItem('busy', file.name, 'mengekstrak teks PDF…');
-    try{
-      const text = await extractPdfText(file);
-      item.querySelector('.meta').textContent = 'mengklasifikasikan via Gemini…';
-      const extracted = await classifyWithGemini(text, file.name);
-      const id = 'lap_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
-      const laporan = {
-        id, fileName: file.name, processedAt: new Date().toISOString(),
-        nomor_lhp: extracted.nomor_lhp || null,
-        tanggal: extracted.tanggal || null,
-        kecamatan: extracted.kecamatan || null,
-        tahapan_diawasi: extracted.tahapan_diawasi || null,
-        nama_pengawas: extracted.nama_pengawas || null,
-        jabatan_pengawas: extracted.jabatan_pengawas || null
-      };
-      const kejadianList = (extracted.kejadian || []).map(k => ({
-        indicator_no: k.indicator_no, kecamatan: extracted.kecamatan || null, desa: k.desa || null, catatan: k.catatan || null
-      }));
-      await saveLaporan(laporan, kejadianList);
-      LAPORAN.push(laporan);
-      kejadianList.forEach((k, idx) => KEJADIAN.push({ ...k, id: id+'_k'+idx, laporan_id: id }));
-      item.className = 'log-item ok';
-      item.querySelector('.meta').textContent = `✓ ${laporan.kecamatan || '?'} — ${kejadianList.length} kejadian tercatat`;
-      okCount++;
-      renderAll();
-    }catch(e){
-      console.error(e);
-      item.className = 'log-item err';
-      item.querySelector('.meta').textContent = 'gagal: ' + (e.message||e);
-      failCount++;
-    }
+  for(let i=0; i<pdfFiles.length; i++){
+    const ok = await processOneFile(pdfFiles[i]);
+    if(ok) okCount++; else failCount++;
     doneCount++;
     queueUpdate(doneCount, total);
+    if(i < pdfFiles.length - 1){
+      await sleep(5000); // jeda 5 detik antar file — mengurangi potensi error akibat permintaan beruntun (high demand)
+    }
   }
   queueFinish(okCount, failCount);
   document.getElementById('last-updated').textContent = 'Terakhir diperbarui: ' + new Date().toLocaleString('id-ID');
 }
+
 
 /* ============ AGGREGATION HELPERS ============ */
 function countByKecamatanIndicator(kecamatan, indicatorNo){
@@ -912,8 +981,99 @@ document.getElementById('downloadWordBtn').onclick = () => {
 
 /* ============ TAB 4: INFOGRAFIS ============ */
 function destroyChart(key){ if(charts[key]){ charts[key].destroy(); delete charts[key]; } }
+
+function inferTingkat(jabatan){
+  if(!jabatan) return 'Tidak Diketahui';
+  const j = jabatan.toLowerCase();
+  if(j.includes('kabupaten') || j.includes('kota')) return 'Kabupaten';
+  if(j.includes('kecamatan') || j.includes('panwascam')) return 'Kecamatan';
+  if(j.includes('desa') || j.includes('kelurahan') || j.includes('pkd')) return 'Desa/Kelurahan';
+  return 'Tidak Diketahui';
+}
+
+function renderStatCards(){
+  const kecCounts = KECAMATAN_LIST.map(k=>({k, n: totalByKecamatan(k)})).sort((a,b)=>b.n-a.n);
+  const dimCounts = {};
+  KEJADIAN.forEach(k => {
+    const ind = INDIKATOR.find(i=>i.no===k.indicator_no);
+    if(ind) dimCounts[ind.dimensi] = (dimCounts[ind.dimensi]||0)+1;
+  });
+  const topDim = Object.entries(dimCounts).sort((a,b)=>b[1]-a[1])[0];
+  const cards = [
+    { v: LAPORAN.length, l: 'Total Laporan Diproses', o:false },
+    { v: KEJADIAN.length, l: 'Total Kejadian Tercatat', o:true },
+    { v: kecCounts[0] && kecCounts[0].n>0 ? `${kecCounts[0].k}` : '—', l: 'Kecamatan Terbanyak Kejadian', o:false },
+    { v: topDim ? topDim[0] : '—', l: 'Dimensi Paling Dominan', o:true }
+  ];
+  document.getElementById('infografisStatCards').innerHTML = cards.map(c =>
+    `<div class="info-stat-card${c.o?' orange':''}"><div class="v">${c.v}</div><div class="l">${c.l}</div></div>`
+  ).join('');
+}
+
+function renderTingkatCharts(){
+  const tingkatList = ['Kabupaten','Kecamatan','Desa/Kelurahan'];
+  const laporanById = {};
+  LAPORAN.forEach(l => laporanById[l.id] = l);
+  const grid = document.getElementById('tingkatChartGrid');
+  grid.innerHTML = tingkatList.map(t => `<div class="chart-card"><h3>Jumlah Kejadian Tingkat ${t}</h3><canvas id="chartTingkat_${t.replace(/[^a-zA-Z]/g,'')}"></canvas></div>`).join('');
+
+  const palette = ['#13294B','#E2711D','#2F6690','#F79320'];
+  tingkatList.forEach(t => {
+    const dimCounts = {};
+    KEJADIAN.forEach(k => {
+      const lap = laporanById[k.laporan_id];
+      if(!lap || inferTingkat(lap.jabatan_pengawas) !== t) return;
+      const ind = INDIKATOR.find(i=>i.no===k.indicator_no);
+      if(!ind) return;
+      dimCounts[ind.dimensi] = (dimCounts[ind.dimensi]||0)+1;
+    });
+    const key = 'tingkat_'+t;
+    destroyChart(key);
+    const canvasId = 'chartTingkat_'+t.replace(/[^a-zA-Z]/g,'');
+    const total = Object.values(dimCounts).reduce((a,b)=>a+b,0);
+    if(total === 0){
+      document.getElementById(canvasId).parentElement.insertAdjacentHTML('beforeend', '<div class="empty-note">Belum ada data.</div>');
+      return;
+    }
+    charts[key] = new Chart(document.getElementById(canvasId), {
+      type:'doughnut',
+      data:{ labels:Object.keys(dimCounts), datasets:[{ data:Object.values(dimCounts), backgroundColor:palette }] },
+      options:{ plugins:{ legend:{ position:'bottom', labels:{ font:{ size:9 } } } } }
+    });
+  });
+}
+
+function renderDimensiKecamatanCharts(){
+  const dimensiList = [...new Set(INDIKATOR.map(i=>i.dimensi))];
+  const grid = document.getElementById('dimensiKecChartGrid');
+  grid.innerHTML = dimensiList.map((d,i) => `<div class="chart-card"><h3>Dimensi ${d}</h3><canvas id="chartDimKec_${i}"></canvas></div>`).join('');
+
+  dimensiList.forEach((dim, i) => {
+    const indikatorNos = INDIKATOR.filter(ind => ind.dimensi === dim).map(ind => ind.no);
+    const kecCounts = KECAMATAN_LIST.map(kec => ({
+      kec, n: KEJADIAN.filter(k => k.kecamatan===kec && indikatorNos.includes(k.indicator_no)).length
+    })).filter(x=>x.n>0).sort((a,b)=>b.n-a.n).slice(0,15);
+    const key = 'dimkec_'+i;
+    destroyChart(key);
+    const canvasId = 'chartDimKec_'+i;
+    if(!kecCounts.length){
+      document.getElementById(canvasId).parentElement.insertAdjacentHTML('beforeend', '<div class="empty-note">Belum ada data untuk dimensi ini.</div>');
+      return;
+    }
+    charts[key] = new Chart(document.getElementById(canvasId), {
+      type:'bar',
+      data:{ labels:kecCounts.map(x=>x.kec), datasets:[{ label:'Jumlah kejadian', data:kecCounts.map(x=>x.n), backgroundColor:'#E2711D' }] },
+      options:{ plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ font:{ size:9 } } }, y:{ beginAtZero:true, ticks:{ precision:0 } } } }
+    });
+  });
+}
+
 function renderInfografis(){
-  const dimCounts = {}, subCounts = {}, indCounts = {};
+  renderStatCards();
+  renderTingkatCharts();
+  renderDimensiKecamatanCharts();
+
+  const dimCounts = {}, subCounts = {}, indCounts = {}, desaCounts = {};
   KEJADIAN.forEach(k => {
     const ind = INDIKATOR.find(i=>i.no===k.indicator_no);
     if(!ind) return;
@@ -922,8 +1082,17 @@ function renderInfografis(){
     indCounts[ind.no] = (indCounts[ind.no]||0)+1;
   });
   const kecCounts = KECAMATAN_LIST.map(k=>({k, n: totalByKecamatan(k)})).sort((a,b)=>b.n-a.n).slice(0,15);
+  const topIndikatorEntry = Object.entries(indCounts).sort((a,b)=>b[1]-a[1])[0];
   const topIndikator = Object.entries(indCounts).sort((a,b)=>b[1]-a[1]).slice(0,10)
     .map(([no,n]) => ({ label: INDIKATOR.find(i=>i.no==no)?.indikator || no, n }));
+
+  if(topIndikatorEntry){
+    const topNo = Number(topIndikatorEntry[0]);
+    KEJADIAN.filter(k=>k.indicator_no===topNo && k.desa).forEach(k => {
+      desaCounts[k.desa] = (desaCounts[k.desa]||0)+1;
+    });
+  }
+  const desaChartData = Object.entries(desaCounts).sort((a,b)=>b[1]-a[1]).slice(0,20);
 
   const palette = ['#13294B','#E2711D','#2F6690','#F79320','#0A1830','#F2994E','#4472A8','#D35400'];
 
@@ -954,6 +1123,20 @@ function renderInfografis(){
     data:{ labels:topIndikator.map(x=>x.label), datasets:[{ label:'Jumlah kejadian', data:topIndikator.map(x=>x.n), backgroundColor:'#2F6690' }] },
     options:{ indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true, ticks:{ precision:0 } } } }
   });
+
+  destroyChart('topindikatordesa');
+  const desaCanvas = document.getElementById('chartTopIndikatorDesa');
+  const desaTitleEl = desaCanvas.closest('.chart-card').querySelector('h3');
+  desaTitleEl.textContent = topIndikatorEntry
+    ? `Sebaran "${INDIKATOR.find(i=>i.no==topIndikatorEntry[0])?.indikator}" per Desa (seperti Grafik 7 laporan)`
+    : 'Sebaran Indikator Terbanyak per Desa (seperti Grafik 7 laporan)';
+  if(desaChartData.length){
+    charts.topindikatordesa = new Chart(desaCanvas, {
+      type:'bar',
+      data:{ labels:desaChartData.map(x=>x[0]), datasets:[{ label:'Jumlah kejadian', data:desaChartData.map(x=>x[1]), backgroundColor:'#F79320' }] },
+      options:{ plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ font:{ size:9 } } }, y:{ beginAtZero:true, ticks:{ precision:0 } } } }
+    });
+  }
 }
 
 /* ============ RENDER ALL ============ */
