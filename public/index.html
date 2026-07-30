@@ -844,10 +844,14 @@ function computeKerawanan(kecamatan){
     skorPerDimensi[d] = skor;
     totalSkor += skor;
   });
-  return { total, jumlahPerDimensi, skorPerDimensi, totalSkor, kategori: total>0 ? kategoriKerawanan(totalSkor) : 'Belum Ada Data' };
+  // "Belum Ada Data" hanya kalau belum ada LAPORAN sama sekali yang diproses untuk kecamatan ini.
+  // Kalau laporan sudah ada tapi 0 kejadian (tidak ditemukan pelanggaran), skornya memang 0 dan
+  // itu tetap masuk kategori sesuai rumusan (skor <10 = Sangat Rendah), bukan "belum ada data".
+  const adaLaporan = laporanCountByKecamatan(kecamatan) > 0;
+  return { total, jumlahPerDimensi, skorPerDimensi, totalSkor, kategori: adaLaporan ? kategoriKerawanan(totalSkor) : 'Belum Ada Data' };
 }
-function colorForKerawanan(skor, hasData){
-  if(!hasData) return '#EFE9DA';
+function colorForKerawanan(skor, adaLaporan){
+  if(!adaLaporan) return '#EFE9DA';
   if(skor < 10) return '#EFE9DA';
   if(skor < 20) return '#F7C59F';
   if(skor < 35) return '#F2994E';
@@ -869,7 +873,7 @@ function computeKerawananKabupaten(){
     skorPerDimensi[d] = skor;
     totalSkor += skor;
   });
-  return { total, jumlahPerDimensi, skorPerDimensi, totalSkor, kategori: total>0 ? kategoriKerawanan(totalSkor) : 'Belum Ada Data' };
+  return { total, jumlahPerDimensi, skorPerDimensi, totalSkor, kategori: LAPORAN.length>0 ? kategoriKerawanan(totalSkor) : 'Belum Ada Data' };
 }
 function renderKerawananPerKecamatan(){
   const rows = KECAMATAN_LIST.map(k => {
@@ -946,7 +950,7 @@ function styleForFeature(feature){
   const name = feature.properties.kecamatan;
   if(petaMode === 'kerawanan'){
     const k = computeKerawanan(name);
-    return { fillColor: colorForKerawanan(k.totalSkor, k.total>0), fillOpacity:0.6, color:'#13294B', weight:1.5 };
+    return { fillColor: colorForKerawanan(k.totalSkor, laporanCountByKecamatan(name)>0), fillOpacity:0.6, color:'#13294B', weight:1.5 };
   }
   const maxViol = Math.max(1, ...KECAMATAN_LIST.map(k=>totalByKecamatan(k)));
   return { fillColor: colorForCount(totalByKecamatan(name), maxViol), fillOpacity:0.55, color:'#13294B', weight:1.5 };
