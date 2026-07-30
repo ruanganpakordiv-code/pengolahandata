@@ -329,9 +329,16 @@
   <!-- TAB 2: PETA -->
   <section class="tabpanel" id="tab-peta">
     <div class="panel">
-      <div class="panel-head"><h2>Peta Sebaran Kecamatan</h2><span class="panel-num">33 KEC.</span></div>
+      <div class="panel-head">
+        <h2>Peta Kerawanan Pemilu</h2>
+        <div style="display:flex; gap:0;">
+          <button class="tabbtn active" id="petaModeKejadian" style="top:0; border-radius:0;">Peta Kejadian per Kecamatan</button>
+          <button class="tabbtn" id="petaModeKerawanan" style="top:0; border-radius:0;">Peta Kerawanan Pemilu (Skor IKP)</button>
+        </div>
+        <span class="panel-num">33 KEC.</span>
+      </div>
       <div id="map"></div>
-      <div class="legend-bar">
+      <div class="legend-bar" id="legendKejadian">
         <span>Kepadatan kejadian:</span>
         <div class="legend-scale">
           <div style="background:#EFE9DA"></div><div style="background:#F7C59F"></div>
@@ -339,6 +346,15 @@
         </div>
         <span>rendah → tinggi (relatif terhadap data yang sudah masuk)</span>
         <span style="margin-left:auto;">Klik kecamatan pada peta untuk ringkasan &amp; detail indikator</span>
+      </div>
+      <div class="legend-bar" id="legendKerawanan" style="display:none;">
+        <span>Skor kerawanan (bobot Dimensi IKP: Konteks Sosial 27% · Penyelenggaraan 38% · Kontestasi 25% · Partisipasi 10%):</span>
+        <div class="legend-scale">
+          <div style="background:#EFE9DA"></div><div style="background:#F7C59F"></div>
+          <div style="background:#F2994E"></div><div style="background:#D35400"></div><div style="background:#13294B"></div>
+        </div>
+        <span>&lt;10 sangat rendah → &gt;50 sangat tinggi</span>
+        <span style="margin-left:auto;">Klik kecamatan untuk lihat rincian skoring per dimensi</span>
       </div>
     </div>
   </section>
@@ -786,6 +802,47 @@ function renderMatrix(){
   document.getElementById('matrix-wrap').innerHTML = `<table class="matrix">${thead}${tbody}</table>`;
 }
 
+/* ============ SKORING KERAWANAN (metode IKP: bobot per dimensi) ============ */
+const BOBOT_DIMENSI = {
+  'KONTEKS SOSIAL POLITIK': 27,
+  'PENYELENGGARAAN PEMILU': 38,
+  'KONTESTASI': 25,
+  'PARTISIPASI': 10
+};
+function kategoriKerawanan(skor){
+  if(skor < 10) return 'Sangat Rendah';
+  if(skor < 20) return 'Rendah';
+  if(skor < 35) return 'Sedang';
+  if(skor < 50) return 'Tinggi';
+  return 'Sangat Tinggi';
+}
+function computeKerawanan(kecamatan){
+  const kejadianKec = KEJADIAN.filter(k => k.kecamatan === kecamatan);
+  const total = kejadianKec.length;
+  const jumlahPerDimensi = {};
+  Object.keys(BOBOT_DIMENSI).forEach(d => jumlahPerDimensi[d] = 0);
+  kejadianKec.forEach(k => {
+    const ind = INDIKATOR.find(i => i.no === k.indicator_no);
+    if(ind && jumlahPerDimensi.hasOwnProperty(ind.dimensi)) jumlahPerDimensi[ind.dimensi]++;
+  });
+  const skorPerDimensi = {};
+  let totalSkor = 0;
+  Object.keys(BOBOT_DIMENSI).forEach(d => {
+    const skor = total > 0 ? (jumlahPerDimensi[d] / total) * BOBOT_DIMENSI[d] : 0;
+    skorPerDimensi[d] = skor;
+    totalSkor += skor;
+  });
+  return { total, jumlahPerDimensi, skorPerDimensi, totalSkor, kategori: total>0 ? kategoriKerawanan(totalSkor) : 'Belum Ada Data' };
+}
+function colorForKerawanan(skor, hasData){
+  if(!hasData) return '#EFE9DA';
+  if(skor < 10) return '#EFE9DA';
+  if(skor < 20) return '#F7C59F';
+  if(skor < 35) return '#F2994E';
+  if(skor < 50) return '#D35400';
+  return '#13294B';
+}
+
 /* ============ MAP ============ */
 function colorForCount(n, max){
   if(n<=0) return '#EFE9DA';
@@ -816,18 +873,47 @@ function initMap(){
     try{ map.fitBounds(geoLayer.getBounds(), {padding:[10,10]}); }catch(e){}
   }, 80);
 }
+let petaMode = 'kejadian'; // 'kejadian' | 'kerawanan'
+
 function styleForFeature(feature){
   const name = feature.properties.kecamatan;
+  if(petaMode === 'kerawanan'){
+    const k = computeKerawanan(name);
+    return { fillColor: colorForKerawanan(k.totalSkor, k.total>0), fillOpacity:0.6, color:'#13294B', weight:1.5 };
+  }
   const maxViol = Math.max(1, ...KECAMATAN_LIST.map(k=>totalByKecamatan(k)));
   return { fillColor: colorForCount(totalByKecamatan(name), maxViol), fillOpacity:0.55, color:'#13294B', weight:1.5 };
 }
+function setPetaMode(mode){
+  petaMode = mode;
+  document.getElementById('petaModeKejadian').classList.toggle('active', mode==='kejadian');
+  document.getElementById('petaModeKerawanan').classList.toggle('active', mode==='kerawanan');
+  document.getElementById('legendKejadian').style.display = mode==='kejadian' ? 'flex' : 'none';
+  document.getElementById('legendKerawanan').style.display = mode==='kerawanan' ? 'flex' : 'none';
+  if(geoLayer){ geoLayer.eachLayer(l => l.setStyle(styleForFeature(l.feature))); }
+}
+document.getElementById('petaModeKejadian').onclick = () => setPetaMode('kejadian');
+document.getElementById('petaModeKerawanan').onclick = () => setPetaMode('kerawanan');
+
 function openKecamatanPopup(name, layer){
-  const html = `<div class="popup-inner">
-    <h4>Kec. ${name}</h4>
-    <div class="popup-row"><span>Jumlah laporan</span><b>${laporanCountByKecamatan(name)}</b></div>
-    <div class="popup-row"><span>Jumlah kejadian</span><b>${totalByKecamatan(name)}</b></div>
-    <button class="popup-btn" onclick="openDrawer('${name.replace(/'/g,"\\'")}')">LIHAT DETAIL INDIKATOR →</button>
-  </div>`;
+  let html;
+  if(petaMode === 'kerawanan'){
+    const k = computeKerawanan(name);
+    html = `<div class="popup-inner">
+      <h4>Kec. ${name}</h4>
+      <div class="popup-row"><span>Skor kerawanan</span><b>${k.totalSkor.toFixed(2)}</b></div>
+      <div class="popup-row"><span>Kategori</span><b>${k.kategori}</b></div>
+      <div class="popup-row"><span>Jumlah kejadian</span><b>${k.total}</b></div>
+      <button class="popup-btn" onclick="openDrawer('${name.replace(/'/g,"\\'")}')">LIHAT RINCIAN SKORING →</button>
+    </div>`;
+  } else {
+    html = `<div class="popup-inner">
+      <h4>Kec. ${name}</h4>
+      <div class="popup-row"><span>Jumlah laporan</span><b>${laporanCountByKecamatan(name)}</b></div>
+      <div class="popup-row"><span>Jumlah kejadian</span><b>${totalByKecamatan(name)}</b></div>
+      <button class="popup-btn" onclick="openDrawer('${name.replace(/'/g,"\\'")}')">LIHAT DETAIL INDIKATOR →</button>
+    </div>`;
+  }
   layer.bindPopup(html).openPopup();
 }
 
@@ -835,6 +921,25 @@ function openKecamatanPopup(name, layer){
 function openDrawer(name){
   document.getElementById('d-kec-name').textContent = 'Kec. ' + name;
   document.getElementById('d-kec-sub').textContent = laporanCountByKecamatan(name) + ' laporan · ' + totalByKecamatan(name) + ' kejadian';
+
+  const kw = computeKerawanan(name);
+  let body = `<div class="dsec"><h3>Skoring Kerawanan Pemilu (Metode IKP)</h3>
+    <div class="kv"><span>Skor Total</span><b>${kw.totalSkor.toFixed(2)}</b></div>
+    <div class="kv"><span>Kategori</span><b>${kw.kategori}</b></div>
+    <table class="detail-table" style="margin-top:8px;">
+      <thead><tr><th>Dimensi</th><th style="width:70px;">Jml Kejadian</th><th style="width:70px;">Bobot</th><th style="width:70px;">Skor</th><th style="width:70px;">Kontribusi</th></tr></thead>
+      <tbody>
+        ${Object.keys(BOBOT_DIMENSI).map(d => `<tr>
+          <td>${d}</td>
+          <td class="col-jml">${kw.jumlahPerDimensi[d]}</td>
+          <td class="col-jml">${BOBOT_DIMENSI[d]}%</td>
+          <td class="col-jml">${kw.skorPerDimensi[d].toFixed(3)}</td>
+          <td class="col-jml">${kw.totalSkor>0 ? ((kw.skorPerDimensi[d]/kw.totalSkor)*100).toFixed(1)+'%' : '—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <div class="empty-note" style="margin-top:6px;">Skor = (Jumlah Kejadian Dimensi ÷ Total Kejadian Kecamatan) × Bobot Dimensi. Kategori: &lt;10 Sangat Rendah, 10–20 Rendah, 20–35 Sedang, 35–50 Tinggi, &gt;50 Sangat Tinggi.</div>
+  </div>`;
 
   const rows = [];
   INDIKATOR.forEach(ind => {
@@ -844,9 +949,8 @@ function openDrawer(name){
     }
   });
 
-  let body = '';
   if(!rows.length){
-    body = '<div class="empty-note">Belum ada kejadian tercatat untuk kecamatan ini.</div>';
+    body += '<div class="empty-note">Belum ada kejadian tercatat untuk kecamatan ini.</div>';
   } else {
     let lastDim = null;
     let tableRows = '';
@@ -858,7 +962,7 @@ function openDrawer(name){
       const catatanHtml = r.catatan.length ? `<ul>${r.catatan.map(c=>`<li>${c}</li>`).join('')}</ul>` : '—';
       tableRows += `<tr><td>${r.no}</td><td>${r.indikator}</td><td class="col-jml">${r.n}</td><td class="col-catatan">${catatanHtml}</td></tr>`;
     });
-    body = `<table class="detail-table">
+    body += `<table class="detail-table">
       <thead><tr><th style="width:30px;">No</th><th>Indikator</th><th style="width:40px;">Jml</th><th>Ringkasan Kejadian</th></tr></thead>
       <tbody>${tableRows}</tbody>
     </table>`;
