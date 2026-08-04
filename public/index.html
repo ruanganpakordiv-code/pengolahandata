@@ -555,7 +555,9 @@ async function saveLaporan(laporan, kejadian){
   });
   if(!res.ok){
     const d = await res.json().catch(()=>({}));
-    throw new Error('gagal menyimpan laporan (' + res.status + ') ' + (d.error||''));
+    const err = new Error(d.error || ('gagal menyimpan laporan (' + res.status + ')'));
+    err.duplicate = res.status === 409 || d.duplicate === true;
+    throw err;
   }
 }
 
@@ -590,8 +592,9 @@ function queueUpdate(done, total){
   document.getElementById('queueLabel').textContent = `Memproses ${done}/${total} laporan… (jeda 5 detik antar-file karena permintaan tinggi/high demand)`;
   document.getElementById('queueFill').style.width = Math.round((done/total)*100) + '%';
 }
-function queueFinish(ok, fail){
-  document.getElementById('queueLabel').textContent = `Selesai — ${ok} berhasil, ${fail} gagal.`;
+function queueFinish(ok, fail, skip){
+  const skipText = skip ? `, ${skip} dilewati (duplikat)` : '';
+  document.getElementById('queueLabel').textContent = `Selesai — ${ok} berhasil, ${fail} gagal${skipText}.`;
   document.getElementById('queueFill').style.width = '100%';
 }
 document.getElementById('queueDone').onclick = () => {
@@ -709,6 +712,14 @@ function sleep(ms){ return new Promise(res => setTimeout(res, ms)); }
 async function processOneFile(file, existingLogEl){
   const item = existingLogEl || logItem('busy', file.name, 'mengekstrak teks PDF…');
   item.className = 'log-item busy';
+
+  // Cegah proses ulang file yang nama-nya sudah pernah tersimpan (hemat kuota API & cegah data dobel)
+  if(!existingLogEl && LAPORAN.some(l => l.fileName === file.name)){
+    item.className = 'log-item busy';
+    item.querySelector('.meta').textContent = 'dilewati — nama file ini sudah pernah diunggah sebelumnya';
+    return 'skip';
+  }
+
   item.querySelector('.meta').textContent = existingLogEl ? 'mencoba lagi — mengekstrak teks PDF…' : 'mengekstrak teks PDF…';
   setLogRetry(item, null);
   try{
@@ -734,16 +745,21 @@ async function processOneFile(file, existingLogEl){
     item.className = 'log-item ok';
     item.querySelector('.meta').textContent = `✓ ${laporan.kecamatan || '?'} — ${kejadianList.length} kejadian tercatat`;
     renderAll();
-    return true;
+    return 'ok';
   }catch(e){
     console.error(e);
+    if(e.duplicate){
+      item.className = 'log-item busy';
+      item.querySelector('.meta').textContent = 'dilewati — file ini sudah ada di database (terdeteksi server)';
+      return 'skip';
+    }
     item.className = 'log-item err';
     item.querySelector('.meta').textContent = 'gagal: ' + (e.message||e);
     setLogRetry(item, () => {
       item.querySelector('.meta').textContent = 'menunggu giliran coba lagi…';
       processOneFile(file, item);
     });
-    return false;
+    return 'fail';
   }
 }
 
@@ -756,18 +772,20 @@ async function handleFiles(files){
   const total = pdfFiles.length;
   if(!total) return;
   queueShow(total);
-  let doneCount = 0, okCount = 0, failCount = 0;
+  let doneCount = 0, okCount = 0, failCount = 0, skipCount = 0;
 
   for(let i=0; i<pdfFiles.length; i++){
-    const ok = await processOneFile(pdfFiles[i]);
-    if(ok) okCount++; else failCount++;
+    const result = await processOneFile(pdfFiles[i]);
+    if(result === 'ok') okCount++;
+    else if(result === 'skip') skipCount++;
+    else failCount++;
     doneCount++;
     queueUpdate(doneCount, total);
-    if(i < pdfFiles.length - 1){
+    if(i < pdfFiles.length - 1 && result !== 'skip'){
       await sleep(5000); // jeda 5 detik antar file — mengurangi potensi error akibat permintaan beruntun (high demand)
     }
   }
-  queueFinish(okCount, failCount);
+  queueFinish(okCount, failCount, skipCount);
   document.getElementById('last-updated').textContent = 'Terakhir diperbarui: ' + new Date().toLocaleString('id-ID');
 }
 
