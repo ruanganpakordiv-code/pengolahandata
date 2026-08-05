@@ -467,12 +467,9 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-
 const GEMINI_MODEL = "gemini-flash-latest";
 const MAX_FILES_PER_BATCH = 250;
 
@@ -622,44 +619,9 @@ function setLogRetry(el, onRetry){
     btn.textContent = '↻ Coba Lagi';
     btn.onclick = onRetry;
     slot.appendChild(btn);
-<<<<<<< HEAD
-=======
   }
 }
 
-/* ============ QUEUE PROGRESS UI (persisten lintas tab) ============ */
-function queueShow(total){
-  document.getElementById('queueBar').classList.add('show');
-  document.getElementById('queueLabel').textContent = `Memproses 0/${total} laporan… (jeda 5 detik antar-file karena permintaan tinggi/high demand)`;
-  document.getElementById('queueFill').style.width = '0%';
-}
-function queueUpdate(done, total){
-  document.getElementById('queueLabel').textContent = `Memproses ${done}/${total} laporan… (jeda 5 detik antar-file karena permintaan tinggi/high demand)`;
-  document.getElementById('queueFill').style.width = Math.round((done/total)*100) + '%';
-}
-function queueFinish(ok, fail, skip){
-  const skipText = skip ? `, ${skip} dilewati (duplikat)` : '';
-  document.getElementById('queueLabel').textContent = `Selesai — ${ok} berhasil, ${fail} gagal${skipText}.`;
-  document.getElementById('queueFill').style.width = '100%';
-}
-document.getElementById('queueDone').onclick = () => {
-  document.getElementById('queueBar').classList.remove('show');
-};
-
-/* ============ PDF TEXT EXTRACTION ============ */
-async function extractPdfText(file){
-  const buf = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
-  let text = '';
-  for(let p=1; p<=pdf.numPages; p++){
-    const page = await pdf.getPage(p);
-    const content = await page.getTextContent();
-    text += content.items.map(i=>i.str).join(' ') + '\n';
->>>>>>> 051641e34208e403e400198ec0a03cf81c4e5abe
-  }
-}
-
-<<<<<<< HEAD
 /* ============ QUEUE PROGRESS UI (persisten lintas tab) ============ */
 function queueShow(total){
   document.getElementById('queueBar').classList.add('show');
@@ -697,8 +659,6 @@ async function fileToBase64(file){
   return btoa(binary);
 }
 
-=======
->>>>>>> 051641e34208e403e400198ec0a03cf81c4e5abe
 /* ============ GEMINI: helper umum (dipakai klasifikasi & ringkasan AI) ============ */
 function isQuotaError(status, data){
   if(status === 429) return true;
@@ -711,11 +671,7 @@ function updateKeyIndicator(){
   if(!keys.length){ el.textContent = ''; return; }
   el.textContent = `Kunci aktif: #${Math.min(currentKeyIndex+1, keys.length)} dari ${keys.length}`;
 }
-<<<<<<< HEAD
 async function callGemini(systemPrompt, userText, jsonMode, extraParts){
-=======
-async function callGemini(systemPrompt, userText, jsonMode){
->>>>>>> 051641e34208e403e400198ec0a03cf81c4e5abe
   const keys = getApiKeys();
   if(!keys.length) throw new Error('Isi dulu Gemini API Key di bagian atas halaman Tab 1');
   if(currentKeyIndex >= keys.length) currentKeyIndex = keys.length - 1;
@@ -726,15 +682,10 @@ async function callGemini(systemPrompt, userText, jsonMode){
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
     let resp, data;
     try{
-<<<<<<< HEAD
       const parts = [{ text: userText }];
       if(extraParts && extraParts.length) parts.push(...extraParts);
       const body = {
         contents: [{ parts }]
-=======
-      const body = {
-        contents: [{ parts: [{ text: userText }] }]
->>>>>>> 051641e34208e403e400198ec0a03cf81c4e5abe
       };
       if(systemPrompt) body.system_instruction = { parts: [{ text: systemPrompt }] };
       if(jsonMode) body.generationConfig = { responseMimeType: 'application/json' };
@@ -792,23 +743,16 @@ Aturan penting:
 - Satu laporan boleh memuat beberapa kejadian sekaligus (misalnya temuan yang sama terjadi di beberapa desa berbeda — buat satu entri kejadian per desa).
 - Jangan mengarang data yang tidak ada di dokumen.`;
 }
-<<<<<<< HEAD
 async function classifyWithGemini(file){
   const base64Data = await fileToBase64(file);
   const userText = `Nama berkas: ${file.name}\n\nBaca PDF terlampir dan ekstrak sesuai skema JSON yang diminta.`;
   const pdfPart = { inline_data: { mime_type: 'application/pdf', data: base64Data } };
   const textBlock = await callGemini(buildClassifyPrompt(), userText, true, [pdfPart]);
-=======
-async function classifyWithGemini(text, fileName){
-  const userText = `Nama berkas: ${fileName}\n\nTeks dokumen:\n${text.slice(0, 15000)}`;
-  const textBlock = await callGemini(buildClassifyPrompt(), userText, true);
->>>>>>> 051641e34208e403e400198ec0a03cf81c4e5abe
   const clean = textBlock.replace(/```json|```/g,'').trim();
   try{
     return JSON.parse(clean);
   }catch(parseErr){
     throw new Error('Gagal parse JSON dari Gemini: ' + parseErr.message);
-<<<<<<< HEAD
   }
 }
 
@@ -882,34 +826,6 @@ async function reprocessOneLaporan(laporan, existingLogEl){
     item.querySelector('.meta').textContent = 'mengklasifikasikan ulang via Gemini…';
     const extracted = await classifyWithGemini(pdfBlob);
     const updatedLaporan = {
-=======
-  }
-}
-
-/* ============ PIPELINE (antrian sekuensial, jeda 5 detik, retry per file) ============ */
-function sleep(ms){ return new Promise(res => setTimeout(res, ms)); }
-
-async function processOneFile(file, existingLogEl){
-  const item = existingLogEl || logItem('busy', file.name, 'mengekstrak teks PDF…');
-  item.className = 'log-item busy';
-
-  // Cegah proses ulang file yang nama-nya sudah pernah tersimpan (hemat kuota API & cegah data dobel)
-  if(!existingLogEl && LAPORAN.some(l => l.fileName === file.name)){
-    item.className = 'log-item busy';
-    item.querySelector('.meta').textContent = 'dilewati — nama file ini sudah pernah diunggah sebelumnya';
-    return 'skip';
-  }
-
-  item.querySelector('.meta').textContent = existingLogEl ? 'mencoba lagi — mengekstrak teks PDF…' : 'mengekstrak teks PDF…';
-  setLogRetry(item, null);
-  try{
-    const text = await extractPdfText(file);
-    item.querySelector('.meta').textContent = 'mengklasifikasikan via Gemini…';
-    const extracted = await classifyWithGemini(text, file.name);
-    const id = 'lap_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
-    const laporan = {
-      id, fileName: file.name, processedAt: new Date().toISOString(),
->>>>>>> 051641e34208e403e400198ec0a03cf81c4e5abe
       nomor_lhp: extracted.nomor_lhp || null,
       tanggal: extracted.tanggal || null,
       kecamatan: extracted.kecamatan || null,
@@ -920,7 +836,6 @@ async function processOneFile(file, existingLogEl){
     const kejadianList = (extracted.kejadian || []).map(k => ({
       indicator_no: k.indicator_no, kecamatan: extracted.kecamatan || null, desa: k.desa || null, catatan: k.catatan || null
     }));
-<<<<<<< HEAD
     await updateLaporan(laporan.id, updatedLaporan, kejadianList);
 
     // Sinkronkan state lokal: timpa metadata laporan, ganti semua kejadian lama milik laporan ini
@@ -930,40 +845,20 @@ async function processOneFile(file, existingLogEl){
 
     item.className = 'log-item ok';
     item.querySelector('.meta').textContent = `✓ diproses ulang — ${laporan.kecamatan || '?'} — ${kejadianList.length} kejadian`;
-=======
-    await saveLaporan(laporan, kejadianList);
-    LAPORAN.push(laporan);
-    kejadianList.forEach((k, idx) => KEJADIAN.push({ ...k, id: id+'_k'+idx, laporan_id: id }));
-    item.className = 'log-item ok';
-    item.querySelector('.meta').textContent = `✓ ${laporan.kecamatan || '?'} — ${kejadianList.length} kejadian tercatat`;
->>>>>>> 051641e34208e403e400198ec0a03cf81c4e5abe
     renderAll();
     return 'ok';
   }catch(e){
     console.error(e);
-<<<<<<< HEAD
-=======
-    if(e.duplicate){
-      item.className = 'log-item busy';
-      item.querySelector('.meta').textContent = 'dilewati — file ini sudah ada di database (terdeteksi server)';
-      return 'skip';
-    }
->>>>>>> 051641e34208e403e400198ec0a03cf81c4e5abe
     item.className = 'log-item err';
     item.querySelector('.meta').textContent = 'gagal: ' + (e.message||e);
     setLogRetry(item, () => {
       item.querySelector('.meta').textContent = 'menunggu giliran coba lagi…';
-<<<<<<< HEAD
       reprocessOneLaporan(laporan, item);
-=======
-      processOneFile(file, item);
->>>>>>> 051641e34208e403e400198ec0a03cf81c4e5abe
     });
     return 'fail';
   }
 }
 
-<<<<<<< HEAD
 async function reprocessAllLaporan(){
   if(!LAPORAN.length){
     document.getElementById('reprocessAllStatus').textContent = 'Belum ada laporan tersimpan.';
@@ -989,31 +884,6 @@ async function reprocessAllLaporan(){
   queueFinish(okCount, failCount, 0);
   statusEl.textContent = `Selesai proses ulang semua laporan — ${okCount} berhasil, ${failCount} gagal.`;
   btn.disabled = false;
-=======
-async function handleFiles(files){
-  if(files.length > MAX_FILES_PER_BATCH){
-    logItem('err', 'Batas terlampaui', `Anda memilih ${files.length} file — maksimal ${MAX_FILES_PER_BATCH} sekaligus. Hanya ${MAX_FILES_PER_BATCH} file pertama yang diproses.`);
-    files = files.slice(0, MAX_FILES_PER_BATCH);
-  }
-  const pdfFiles = files.filter(f => f.type === 'application/pdf');
-  const total = pdfFiles.length;
-  if(!total) return;
-  queueShow(total);
-  let doneCount = 0, okCount = 0, failCount = 0, skipCount = 0;
-
-  for(let i=0; i<pdfFiles.length; i++){
-    const result = await processOneFile(pdfFiles[i]);
-    if(result === 'ok') okCount++;
-    else if(result === 'skip') skipCount++;
-    else failCount++;
-    doneCount++;
-    queueUpdate(doneCount, total);
-    if(i < pdfFiles.length - 1 && result !== 'skip'){
-      await sleep(5000); // jeda 5 detik antar file — mengurangi potensi error akibat permintaan beruntun (high demand)
-    }
-  }
-  queueFinish(okCount, failCount, skipCount);
->>>>>>> 051641e34208e403e400198ec0a03cf81c4e5abe
   document.getElementById('last-updated').textContent = 'Terakhir diperbarui: ' + new Date().toLocaleString('id-ID');
 }
 document.getElementById('reprocessAllBtn').addEventListener('click', reprocessAllLaporan);
@@ -1043,7 +913,6 @@ async function handleFiles(files){
   queueFinish(okCount, failCount, skipCount);
   document.getElementById('last-updated').textContent = 'Terakhir diperbarui: ' + new Date().toLocaleString('id-ID');
 }
-
 
 
 /* ============ AGGREGATION HELPERS ============ */
