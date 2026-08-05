@@ -191,6 +191,7 @@
   }
   table.matrix .total-col{background:#FBE4CB; font-weight:700;}
   table.matrix td.hit{background:#FBE4CB; color:var(--maroon-deep); font-weight:700;}
+  table.matrix td.hit:hover{background:var(--gold-bright); color:var(--white); outline:2px solid var(--maroon);}
 
   /* Map */
   #map{height:560px; width:100%; background:#dcd6c4;}
@@ -1004,7 +1005,11 @@ function renderMatrix(){
     KECAMATAN_LIST.forEach(kec => {
       const n = countByKecamatanIndicator(kec, ind.no);
       total += n;
-      tbody += `<td class="${n>0?'hit':''}">${n||''}</td>`;
+      if(n > 0){
+        tbody += `<td class="hit" style="cursor:pointer;" title="Klik untuk lihat laporan sumbernya" onclick="openIndicatorDetail('${kec.replace(/'/g,"\\'")}', ${ind.no})">${n}</td>`;
+      } else {
+        tbody += `<td></td>`;
+      }
     });
     tbody += `<td class="total-col">${total||0}</td></tr>`;
   });
@@ -1187,6 +1192,45 @@ function openKecamatanPopup(name, layer){
 }
 
 /* ============ DRAWER: tabel indikator yang punya kejadian saja ============ */
+/* ============ DRAWER: rincian laporan sumber dari satu sel Rekapitulasi Indikator ============
+   Dipanggil saat klik angka di tabel matrix Tab 1 — supaya jelas kejadian itu
+   berasal dari laporan (nomor LHP/nama file) yang mana, bukan cuma tahu
+   kecamatannya saja. */
+function openIndicatorDetail(kecamatan, indicatorNo){
+  const ind = INDIKATOR.find(i => i.no === indicatorNo);
+  const matches = KEJADIAN.filter(k => k.kecamatan === kecamatan && k.indicator_no === indicatorNo);
+
+  document.getElementById('d-kec-name').textContent = 'Kec. ' + kecamatan;
+  document.getElementById('d-kec-sub').textContent = `Indikator #${indicatorNo} — ${ind ? ind.indikator : ''} · ${matches.length} kejadian`;
+
+  let body = '';
+  if(!matches.length){
+    body = '<div class="empty-note">Tidak ada kejadian tercatat.</div>';
+  } else {
+    const rows = matches.map(k => {
+      const lap = LAPORAN.find(l => l.id === k.laporan_id);
+      const fileName = lap ? (lap.fileName || lap.id) : '(laporan tidak ditemukan — mungkin sudah dihapus)';
+      const nomorLhp = lap && lap.nomor_lhp ? lap.nomor_lhp : '—';
+      const tanggal = lap && lap.tanggal ? lap.tanggal : '—';
+      return `<tr>
+        <td style="font-family:'IBM Plex Mono',monospace; font-size:10.5px;">${fileName}</td>
+        <td>${nomorLhp}</td>
+        <td>${tanggal}</td>
+        <td>${k.desa || '—'}</td>
+        <td class="col-catatan">${k.catatan || '—'}</td>
+      </tr>`;
+    }).join('');
+    body = `<table class="detail-table">
+      <thead><tr><th>File Laporan</th><th>Nomor LHP</th><th>Tanggal</th><th>Desa</th><th>Catatan</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+
+  document.getElementById('d-body').innerHTML = body;
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('overlay').classList.add('show');
+}
+
 function openDrawer(name){
   document.getElementById('d-kec-name').textContent = 'Kec. ' + name;
   document.getElementById('d-kec-sub').textContent = laporanCountByKecamatan(name) + ' laporan · ' + totalByKecamatan(name) + ' kejadian';
