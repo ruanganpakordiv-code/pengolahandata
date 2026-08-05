@@ -1,11 +1,13 @@
 // PUT    /api/laporan/:id -> perbarui metadata + ganti seluruh kejadian (dipakai "Proses Ulang")
+// PATCH  /api/laporan/:id -> ubah HANYA field is_rekap (toggle manual, tanpa reclassify/ubah kejadian)
 // DELETE /api/laporan/:id -> hapus satu laporan beserta seluruh kejadiannya
 //
 // Body PUT yang diharapkan (sama seperti POST /api/laporan, tanpa field 'id' di dalam laporan):
 // {
-//   laporan: { nomor_lhp, tanggal, kecamatan, tahapan_diawasi, nama_pengawas, jabatan_pengawas },
+//   laporan: { nomor_lhp, tanggal, kecamatan, tahapan_diawasi, nama_pengawas, jabatan_pengawas, is_rekap },
 //   kejadian: [ { indicator_no, kecamatan, desa, catatan }, ... ]  // boleh kosong; menggantikan semua kejadian lama
 // }
+// Body PATCH yang diharapkan: { is_rekap: true|false }
 
 export async function onRequestPut(context) {
   const { request, env, params } = context;
@@ -18,7 +20,7 @@ export async function onRequestPut(context) {
       env.DB.prepare(
         `UPDATE laporan SET
            nomor_lhp = ?, tanggal = ?, kecamatan = ?, tahapan_diawasi = ?,
-           nama_pengawas = ?, jabatan_pengawas = ?, processed_at = ?
+           nama_pengawas = ?, jabatan_pengawas = ?, is_rekap = ?, processed_at = ?
          WHERE id = ?`
       ).bind(
         lap.nomor_lhp || null,
@@ -27,6 +29,7 @@ export async function onRequestPut(context) {
         lap.tahapan_diawasi || null,
         lap.nama_pengawas || null,
         lap.jabatan_pengawas || null,
+        lap.is_rekap ? 1 : 0,
         new Date().toISOString(),
         params.id
       ),
@@ -52,6 +55,24 @@ export async function onRequestPut(context) {
 
     await env.DB.batch(statements);
     return new Response(JSON.stringify({ ok: true, kejadian_count: kejadianList.length }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+}
+
+export async function onRequestPatch(context) {
+  const { request, env, params } = context;
+  try {
+    const body = await request.json();
+    await env.DB.prepare("UPDATE laporan SET is_rekap = ? WHERE id = ?")
+      .bind(body.is_rekap ? 1 : 0, params.id)
+      .run();
+    return new Response(JSON.stringify({ ok: true, is_rekap: !!body.is_rekap }), {
       headers: { "Content-Type": "application/json" }
     });
   } catch (e) {

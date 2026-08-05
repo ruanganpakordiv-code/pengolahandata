@@ -21,7 +21,8 @@ export async function onRequestGet(context) {
     kecamatan: r.kecamatan,
     tahapan_diawasi: r.tahapan_diawasi,
     nama_pengawas: r.nama_pengawas,
-    jabatan_pengawas: r.jabatan_pengawas
+    jabatan_pengawas: r.jabatan_pengawas,
+    is_rekap: !!r.is_rekap
   }));
 
   const kejadian = kejadianRes.results.map(k => ({
@@ -54,8 +55,8 @@ export async function onRequestPost(context) {
     statements.push(
       env.DB.prepare(
         `INSERT INTO laporan
-          (id, file_name, processed_at, nomor_lhp, tanggal, kecamatan, tahapan_diawasi, nama_pengawas, jabatan_pengawas)
-         VALUES (?,?,?,?,?,?,?,?,?)`
+          (id, file_name, processed_at, nomor_lhp, tanggal, kecamatan, tahapan_diawasi, nama_pengawas, jabatan_pengawas, is_rekap)
+         VALUES (?,?,?,?,?,?,?,?,?,?)`
       ).bind(
         lap.id,
         lap.fileName || null,
@@ -65,7 +66,8 @@ export async function onRequestPost(context) {
         lap.kecamatan || null,
         lap.tahapan_diawasi || null,
         lap.nama_pengawas || null,
-        lap.jabatan_pengawas || null
+        lap.jabatan_pengawas || null,
+        lap.is_rekap ? 1 : 0
       )
     );
 

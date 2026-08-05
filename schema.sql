@@ -19,7 +19,10 @@ CREATE TABLE laporan (
   kecamatan TEXT,
   tahapan_diawasi TEXT,
   nama_pengawas TEXT,
-  jabatan_pengawas TEXT
+  jabatan_pengawas TEXT,
+  is_rekap INTEGER DEFAULT 0  -- 1 = laporan Kecamatan yang sifatnya rekap/inventarisir
+                              -- multi-desa (kejadiannya DIKECUALIKAN dari perhitungan
+                              -- supaya tidak double counting dengan laporan desa/PKD)
 );
 
 CREATE TABLE kejadian (

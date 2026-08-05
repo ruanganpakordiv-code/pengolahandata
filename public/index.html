@@ -481,6 +481,11 @@ let KECAMATAN_LIST = [];
 let GEOJSON = null;
 let LAPORAN = [];
 let KEJADIAN = [];
+let COUNTABLE_KEJADIAN = []; // = KEJADIAN dikurangi kejadian dari laporan yang ditandai is_rekap (cegah double counting)
+function recomputeCountable(){
+  const rekapIds = new Set(LAPORAN.filter(l => l.is_rekap).map(l => l.id));
+  COUNTABLE_KEJADIAN = KEJADIAN.filter(k => !rekapIds.has(k.laporan_id));
+}
 let map, geoLayer, mapInitialized = false;
 const kecLayerByName = {};
 let charts = {};
@@ -735,6 +740,7 @@ Kembalikan HANYA satu objek JSON valid, tanpa markdown, tanpa penjelasan, dengan
  "tahapan_diawasi": string ringkas atau null,
  "nama_pengawas": string atau null,
  "jabatan_pengawas": string atau null,
+ "is_rekap_multidesa": true atau false,
  "kejadian": array berisi 0 atau lebih objek { "indicator_no": <angka 1-61 dari daftar di atas>, "desa": "<nama desa PERSIS dari daftar kecamatan yang dipilih, atau null jika tidak spesifik>", "catatan": "<ringkasan singkat 1 kalimat buatan Anda sendiri>" }
 }
 
@@ -742,6 +748,8 @@ Aturan penting:
 - Isi array "kejadian" HANYA untuk hal yang benar-benar disebutkan sebagai dugaan pelanggaran/temuan/ketidaksesuaian dalam dokumen (termasuk bagian "Informasi Dugaan Pelanggaran", "Uraian Singkat Hasil Pengawasan", "Fakta dan Keterangan", dan lampiran dokumentasi foto). Kalau laporan murni pengawasan rutin tanpa temuan, kembalikan array kosong [].
 - Kalau suatu field (mis. "Tempat Kejadian", "Waktu Kejadian", "Pelaku") ditulis "(Terlampir)", cari nilainya di lampiran/halaman berikutnya pada PDF yang sama, atau di bagian "Uraian Singkat Hasil Pengawasan" / dokumentasi foto — jangan anggap kosong hanya karena field itu bertuliskan "(Terlampir)".
 - Satu laporan boleh memuat beberapa kejadian sekaligus (misalnya temuan yang sama terjadi di beberapa desa berbeda — buat satu entri kejadian per desa).
+- KHUSUS untuk dugaan pelanggaran terkait pemasangan Alat Peraga Kampanye (APK) dan/atau Bahan Kampanye (BK): hitung SATU kejadian per Pasangan Calon/Partai Politik per desa — BUKAN per jumlah fisik APK/spanduk/baliho/stiker yang ditemukan. Contoh: kalau di satu desa ditemukan 5 baliho melanggar dari Paslon A dan 3 spanduk melanggar dari Paslon B, itu 2 kejadian (satu entri untuk Paslon A, satu entri untuk Paslon B) — BUKAN 8 kejadian. Kalau di desa yang sama ada beberapa titik pelanggaran tapi semuanya dari paslon/parpol yang sama, itu tetap 1 kejadian saja untuk desa itu (sebutkan jumlah titik di "catatan", jangan digandakan jadi banyak entri).
+- Tentukan "is_rekap_multidesa": true HANYA jika laporan ini levelnya Kecamatan (dilihat dari "jabatan_pengawas", mis. "Anggota Panwascam", "Ketua Panwascam", bukan "Pengawas Desa/Kelurahan" atau "PKD") DAN isinya adalah REKAPITULASI/INVENTARISASI yang menggabungkan hasil pengawasan dari BANYAK desa sekaligus dalam satu rentang waktu (ciri-cirinya: menyebut rentang tanggal pengawasan seperti "mulai tanggal X sampai Y", dan menyebut banyak nama desa sekaligus, mis. lebih dari 3 desa, dalam satu laporan) — ini biasanya berarti isinya menggabungkan/merangkum laporan-laporan tingkat desa yang sudah/akan dilaporkan terpisah, sehingga berisiko dihitung dua kali kalau laporan desa itu juga masuk ke sistem. Kalau laporan menceritakan SATU kejadian/insiden spesifik di satu waktu tertentu (walau lokasinya mencakup 1-2 desa), set false — itu bukan rekap, itu laporan insiden langsung.
 - Jangan mengarang data yang tidak ada di dokumen.`;
 }
 async function classifyWithGemini(file){
@@ -783,7 +791,8 @@ async function processOneFile(file, existingLogEl){
       kecamatan: extracted.kecamatan || null,
       tahapan_diawasi: extracted.tahapan_diawasi || null,
       nama_pengawas: extracted.nama_pengawas || null,
-      jabatan_pengawas: extracted.jabatan_pengawas || null
+      jabatan_pengawas: extracted.jabatan_pengawas || null,
+      is_rekap: !!extracted.is_rekap_multidesa
     };
     const kejadianList = (extracted.kejadian || []).map(k => ({
       indicator_no: k.indicator_no, kecamatan: extracted.kecamatan || null, desa: k.desa || null, catatan: k.catatan || null
@@ -832,7 +841,8 @@ async function reprocessOneLaporan(laporan, existingLogEl){
       kecamatan: extracted.kecamatan || null,
       tahapan_diawasi: extracted.tahapan_diawasi || null,
       nama_pengawas: extracted.nama_pengawas || null,
-      jabatan_pengawas: extracted.jabatan_pengawas || null
+      jabatan_pengawas: extracted.jabatan_pengawas || null,
+      is_rekap: !!extracted.is_rekap_multidesa
     };
     const kejadianList = (extracted.kejadian || []).map(k => ({
       indicator_no: k.indicator_no, kecamatan: extracted.kecamatan || null, desa: k.desa || null, catatan: k.catatan || null
@@ -916,12 +926,15 @@ async function handleFiles(files){
 }
 
 
-/* ============ AGGREGATION HELPERS ============ */
+/* ============ AGGREGATION HELPERS ============
+   Semua fungsi di bawah pakai COUNTABLE_KEJADIAN (bukan KEJADIAN mentah) supaya
+   kejadian dari laporan Kecamatan yang ditandai rekap/inventarisir multi-desa
+   (laporan.is_rekap) tidak dihitung dua kali bersama laporan desa/PKD-nya. */
 function countByKecamatanIndicator(kecamatan, indicatorNo){
-  return KEJADIAN.filter(k => k.kecamatan === kecamatan && k.indicator_no === indicatorNo).length;
+  return COUNTABLE_KEJADIAN.filter(k => k.kecamatan === kecamatan && k.indicator_no === indicatorNo).length;
 }
 function totalByKecamatan(kecamatan){
-  return KEJADIAN.filter(k => k.kecamatan === kecamatan).length;
+  return COUNTABLE_KEJADIAN.filter(k => k.kecamatan === kecamatan).length;
 }
 function laporanCountByKecamatan(kecamatan){
   return LAPORAN.filter(l => l.kecamatan === kecamatan).length;
@@ -929,22 +942,27 @@ function laporanCountByKecamatan(kecamatan){
 
 /* ============ TAB 1: DAFTAR LAPORAN TERSIMPAN (proses ulang / hapus per laporan) ============ */
 function renderLaporanTable(){
-  document.getElementById('laporan-table-meta').textContent = LAPORAN.length + ' LAPORAN';
+  const rekapCount = LAPORAN.filter(l => l.is_rekap).length;
+  document.getElementById('laporan-table-meta').textContent = LAPORAN.length + ' LAPORAN' + (rekapCount ? ` · ${rekapCount} DITANDAI REKAP (kejadiannya dikecualikan dari hitungan)` : '');
   if(!LAPORAN.length){
     document.getElementById('laporan-table-wrap').innerHTML = '<div class="empty-note" style="padding:12px;">Belum ada laporan diunggah.</div>';
     return;
   }
   const sorted = [...LAPORAN].sort((a,b)=> new Date(b.processedAt) - new Date(a.processedAt));
   const rows = sorted.map(l => {
-    const n = totalByKecamatan ? KEJADIAN.filter(k=>k.laporan_id===l.id).length : 0;
-    return `<tr>
+    const n = KEJADIAN.filter(k=>k.laporan_id===l.id).length;
+    const rekapBadge = l.is_rekap
+      ? `<span class="tag" style="background:var(--gold); color:var(--white); border-color:var(--gold);" title="Kejadian dari laporan ini dikecualikan dari rekapitulasi/peta/skor supaya tidak double counting dengan laporan desa">REKAP</span>`
+      : '';
+    return `<tr${l.is_rekap ? ' style="opacity:0.72;"' : ''}>
       <td style="text-align:left; font-family:'IBM Plex Sans',sans-serif; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${l.fileName||''}">${l.fileName||l.id}</td>
       <td style="text-align:left;">${l.kecamatan||'—'}</td>
       <td style="text-align:left;">${l.nomor_lhp||'—'}</td>
-      <td>${n}</td>
+      <td>${n}${rekapBadge ? '<br>'+rekapBadge : ''}</td>
       <td>${l.processedAt ? new Date(l.processedAt).toLocaleString('id-ID') : '—'}</td>
       <td>
         <button class="retry-btn" style="border-color:var(--maroon); color:var(--maroon);" onclick="reprocessSingleFromTable('${l.id}')">🔄 Proses Ulang</button>
+        <button class="retry-btn" style="border-color:var(--gold); color:var(--gold);" onclick="toggleRekapFromTable('${l.id}', ${!l.is_rekap})">${l.is_rekap ? '↩︎ Batalkan Rekap' : '🏷 Tandai Rekap'}</button>
         <button class="retry-btn" onclick="deleteSingleFromTable('${l.id}', '${(l.fileName||l.id).replace(/'/g,"\\'")}')">🗑 Hapus</button>
       </td>
     </tr>`;
@@ -953,6 +971,25 @@ function renderLaporanTable(){
     <thead><tr><th style="text-align:left;">File</th><th style="text-align:left;">Kecamatan</th><th style="text-align:left;">Nomor LHP</th><th>Kejadian</th><th>Diproses</th><th>Aksi</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
+}
+async function toggleRekapFromTable(id, newValue){
+  const laporan = LAPORAN.find(l => l.id === id);
+  if(!laporan) return;
+  try{
+    const res = await fetch('/api/laporan/' + encodeURIComponent(id), {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ is_rekap: newValue })
+    });
+    if(!res.ok){
+      const d = await res.json().catch(()=>({}));
+      throw new Error(d.error || ('gagal mengubah status (' + res.status + ')'));
+    }
+    laporan.is_rekap = newValue;
+    renderAll();
+  }catch(e){
+    alert('Gagal mengubah status rekap: ' + e.message);
+  }
 }
 async function reprocessSingleFromTable(id){
   const laporan = LAPORAN.find(l => l.id === id);
@@ -984,7 +1021,7 @@ async function deleteSingleFromTable(id, label){
 
 /* ============ TAB 1: MATRIX TABLE ============ */
 function renderMatrix(){
-  document.getElementById('matrix-meta').textContent = LAPORAN.length + ' LAPORAN · ' + KEJADIAN.length + ' KEJADIAN';
+  document.getElementById('matrix-meta').textContent = LAPORAN.length + ' LAPORAN · ' + COUNTABLE_KEJADIAN.length + ' KEJADIAN DIHITUNG' + (KEJADIAN.length !== COUNTABLE_KEJADIAN.length ? ` (${KEJADIAN.length - COUNTABLE_KEJADIAN.length} dari laporan rekap dikecualikan)` : '');
   let lastDim = null, lastSub = null;
   let thead = '<thead><tr><th class="col-no">No</th><th class="col-ind">Indikator</th>';
   KECAMATAN_LIST.forEach(k => { thead += `<th class="kec-head" title="${k}">${k}</th>`; });
@@ -1032,7 +1069,7 @@ function kategoriKerawanan(skor){
   return 'Sangat Tinggi';
 }
 function computeKerawanan(kecamatan){
-  const kejadianKec = KEJADIAN.filter(k => k.kecamatan === kecamatan);
+  const kejadianKec = COUNTABLE_KEJADIAN.filter(k => k.kecamatan === kecamatan);
   const total = kejadianKec.length;
   const jumlahPerDimensi = {};
   Object.keys(BOBOT_DIMENSI).forEach(d => jumlahPerDimensi[d] = 0);
@@ -1062,10 +1099,10 @@ function colorForKerawanan(skor, adaLaporan){
   return '#13294B';
 }
 function computeKerawananKabupaten(){
-  const total = KEJADIAN.length;
+  const total = COUNTABLE_KEJADIAN.length;
   const jumlahPerDimensi = {};
   Object.keys(BOBOT_DIMENSI).forEach(d => jumlahPerDimensi[d] = 0);
-  KEJADIAN.forEach(k => {
+  COUNTABLE_KEJADIAN.forEach(k => {
     const ind = INDIKATOR.find(i => i.no === k.indicator_no);
     if(ind && jumlahPerDimensi.hasOwnProperty(ind.dimensi)) jumlahPerDimensi[ind.dimensi]++;
   });
@@ -1197,8 +1234,9 @@ function openKecamatanPopup(name, layer){
    berasal dari laporan (nomor LHP/nama file) yang mana, bukan cuma tahu
    kecamatannya saja. */
 function openIndicatorDetail(kecamatan, indicatorNo){
+  recomputeCountable();
   const ind = INDIKATOR.find(i => i.no === indicatorNo);
-  const matches = KEJADIAN.filter(k => k.kecamatan === kecamatan && k.indicator_no === indicatorNo);
+  const matches = COUNTABLE_KEJADIAN.filter(k => k.kecamatan === kecamatan && k.indicator_no === indicatorNo);
 
   document.getElementById('d-kec-name').textContent = 'Kec. ' + kecamatan;
   document.getElementById('d-kec-sub').textContent = `Indikator #${indicatorNo} — ${ind ? ind.indikator : ''} · ${matches.length} kejadian`;
@@ -1232,6 +1270,7 @@ function openIndicatorDetail(kecamatan, indicatorNo){
 }
 
 function openDrawer(name){
+  recomputeCountable();
   document.getElementById('d-kec-name').textContent = 'Kec. ' + name;
   document.getElementById('d-kec-sub').textContent = laporanCountByKecamatan(name) + ' laporan · ' + totalByKecamatan(name) + ' kejadian';
 
@@ -1239,7 +1278,7 @@ function openDrawer(name){
 
   const rows = [];
   INDIKATOR.forEach(ind => {
-    const matches = KEJADIAN.filter(k => k.kecamatan===name && k.indicator_no===ind.no);
+    const matches = COUNTABLE_KEJADIAN.filter(k => k.kecamatan===name && k.indicator_no===ind.no);
     if(matches.length>0){
       rows.push({ ...ind, n: matches.length, catatan: matches.map(m=>m.catatan).filter(Boolean) });
     }
@@ -1264,7 +1303,7 @@ function openDrawer(name){
     </table>`;
   }
 
-  const desaSet = new Set(KEJADIAN.filter(k=>k.kecamatan===name && k.desa).map(k=>k.desa));
+  const desaSet = new Set(COUNTABLE_KEJADIAN.filter(k=>k.kecamatan===name && k.desa).map(k=>k.desa));
   if(desaSet.size){
     body += `<div style="margin-top:16px;"><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--maroon); margin-bottom:6px; text-transform:uppercase; letter-spacing:.06em;">Desa Terdampak</div><div style="display:flex; flex-wrap:wrap; gap:5px;">${Array.from(desaSet).map(d=>`<span class="tag">${d}</span>`).join('')}</div></div>`;
   }
@@ -1294,7 +1333,7 @@ Tulis dalam paragraf yang mengalir, bukan hanya daftar poin, tapi boleh memakai 
 
 function gatherDataSummary(){
   const dimCounts = {}, subCounts = {}, indCounts = {};
-  KEJADIAN.forEach(k => {
+  COUNTABLE_KEJADIAN.forEach(k => {
     const ind = INDIKATOR.find(i=>i.no===k.indicator_no);
     if(!ind) return;
     dimCounts[ind.dimensi] = (dimCounts[ind.dimensi]||0)+1;
@@ -1306,7 +1345,7 @@ function gatherDataSummary(){
     .map(([no,n]) => ({ no:Number(no), indikator: INDIKATOR.find(i=>i.no==no)?.indikator || '', jumlah:n }));
   return {
     total_laporan: LAPORAN.length,
-    total_kejadian: KEJADIAN.length,
+    total_kejadian: COUNTABLE_KEJADIAN.length,
     per_dimensi: dimCounts,
     per_sub_dimensi: subCounts,
     per_kecamatan: kecCounts,
@@ -1394,14 +1433,14 @@ function inferTingkat(jabatan){
 function renderStatCards(){
   const kecCounts = KECAMATAN_LIST.map(k=>({k, n: totalByKecamatan(k)})).sort((a,b)=>b.n-a.n);
   const dimCounts = {};
-  KEJADIAN.forEach(k => {
+  COUNTABLE_KEJADIAN.forEach(k => {
     const ind = INDIKATOR.find(i=>i.no===k.indicator_no);
     if(ind) dimCounts[ind.dimensi] = (dimCounts[ind.dimensi]||0)+1;
   });
   const topDim = Object.entries(dimCounts).sort((a,b)=>b[1]-a[1])[0];
   const cards = [
     { v: LAPORAN.length, l: 'Total Laporan Diproses', o:false },
-    { v: KEJADIAN.length, l: 'Total Kejadian Tercatat', o:true },
+    { v: COUNTABLE_KEJADIAN.length, l: 'Total Kejadian Dihitung', o:true },
     { v: kecCounts[0] && kecCounts[0].n>0 ? `${kecCounts[0].k}` : '—', l: 'Kecamatan Terbanyak Kejadian', o:false },
     { v: topDim ? topDim[0] : '—', l: 'Dimensi Paling Dominan', o:true }
   ];
@@ -1422,7 +1461,7 @@ function renderTingkatCharts(){
     const dimCounts = {};
     KEJADIAN.forEach(k => {
       const lap = laporanById[k.laporan_id];
-      if(!lap || inferTingkat(lap.jabatan_pengawas) !== t) return;
+      if(!lap || lap.is_rekap || inferTingkat(lap.jabatan_pengawas) !== t) return;
       const ind = INDIKATOR.find(i=>i.no===k.indicator_no);
       if(!ind) return;
       dimCounts[ind.dimensi] = (dimCounts[ind.dimensi]||0)+1;
@@ -1451,7 +1490,7 @@ function renderDimensiKecamatanCharts(){
   dimensiList.forEach((dim, i) => {
     const indikatorNos = INDIKATOR.filter(ind => ind.dimensi === dim).map(ind => ind.no);
     const kecCounts = KECAMATAN_LIST.map(kec => ({
-      kec, n: KEJADIAN.filter(k => k.kecamatan===kec && indikatorNos.includes(k.indicator_no)).length
+      kec, n: COUNTABLE_KEJADIAN.filter(k => k.kecamatan===kec && indikatorNos.includes(k.indicator_no)).length
     })).filter(x=>x.n>0).sort((a,b)=>b.n-a.n).slice(0,15);
     const key = 'dimkec_'+i;
     destroyChart(key);
@@ -1474,12 +1513,13 @@ function renderInfografis(){
       '<div class="empty-note" style="grid-column:1/-1;">Gagal memuat library grafik (Chart.js) — cek koneksi internet Anda, lalu refresh halaman. Kalau masih gagal, kemungkinan CDN sedang bermasalah.</div>';
     return;
   }
+  recomputeCountable();
   renderStatCards();
   renderTingkatCharts();
   renderDimensiKecamatanCharts();
 
   const dimCounts = {}, subCounts = {}, indCounts = {}, desaCounts = {};
-  KEJADIAN.forEach(k => {
+  COUNTABLE_KEJADIAN.forEach(k => {
     const ind = INDIKATOR.find(i=>i.no===k.indicator_no);
     if(!ind) return;
     dimCounts[ind.dimensi] = (dimCounts[ind.dimensi]||0)+1;
@@ -1493,7 +1533,7 @@ function renderInfografis(){
 
   if(topIndikatorEntry){
     const topNo = Number(topIndikatorEntry[0]);
-    KEJADIAN.filter(k=>k.indicator_no===topNo && k.desa).forEach(k => {
+    COUNTABLE_KEJADIAN.filter(k=>k.indicator_no===topNo && k.desa).forEach(k => {
       desaCounts[k.desa] = (desaCounts[k.desa]||0)+1;
     });
   }
@@ -1546,6 +1586,7 @@ function renderInfografis(){
 
 /* ============ RENDER ALL ============ */
 function renderAll(){
+  recomputeCountable();
   renderLaporanTable();
   renderMatrix();
   renderKerawananPerKecamatan();
