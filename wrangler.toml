@@ -9,3 +9,7 @@ pages_build_output_dir = "public"
 binding = "DB"
 database_name = "db_pengawasan"
 database_id = "400d7afe-6110-4b84-b7d3-9edcc94947b4"
+
+[[r2_buckets]]
+bucket_name = "lhp-pdf-storage"
+binding = "lhp_pdf_storage"
