@@ -34,3 +34,4 @@ CREATE TABLE kejadian (
 CREATE INDEX idx_kejadian_laporan ON kejadian(laporan_id);
 CREATE INDEX idx_kejadian_kecamatan ON kejadian(kecamatan);
 CREATE INDEX idx_kejadian_indicator ON kejadian(indicator_no);
+CREATE UNIQUE INDEX idx_laporan_filename_unique ON laporan(file_name);

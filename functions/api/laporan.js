@@ -92,8 +92,12 @@ export async function onRequestPost(context) {
       headers: { "Content-Type": "application/json" }
     });
   } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), {
-      status: 500,
+    const isDuplicate = /UNIQUE constraint failed/i.test(e.message || "");
+    return new Response(JSON.stringify({
+      error: isDuplicate ? "File dengan nama ini sudah pernah diunggah sebelumnya" : e.message,
+      duplicate: isDuplicate
+    }), {
+      status: isDuplicate ? 409 : 500,
       headers: { "Content-Type": "application/json" }
     });
   }
