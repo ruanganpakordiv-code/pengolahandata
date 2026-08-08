@@ -975,20 +975,42 @@ function compareLaporanForTable(a, b){
   const kecCompare = kecA.localeCompare(kecB, 'id');
   if(kecCompare !== 0) return kecCompare;
 
-  // 2. Tanggal kejadian yang diambil dari Nomor LHP (bulan romawi/numerik sebelum tahun)
+  // 2. Desa A-Z (dideteksi dari nama file; laporan tingkat kecamatan tanpa desa ditaruh duluan)
+  const desaA = extractDesaFromFileName(a.fileName) || '';
+  const desaB = extractDesaFromFileName(b.fileName) || '';
+  const desaCompare = desaA.localeCompare(desaB, 'id');
+  if(desaCompare !== 0) return desaCompare;
+
+  // 3. Tanggal kejadian yang diambil dari Nomor LHP (bulan romawi/numerik sebelum tahun)
   const dateA = parseNomorLHPDate(a.nomor_lhp);
   const dateB = parseNomorLHPDate(b.nomor_lhp);
   if(dateA && dateB && dateA.getTime() !== dateB.getTime()) return dateA - dateB;
   if(dateA && !dateB) return -1;
   if(!dateA && dateB) return 1;
 
-  // 3. Nomor urut LHP (angka paling depan)
+  // 4. Nomor urut LHP (angka paling depan)
   const seqA = parseNomorLHPSeq(a.nomor_lhp);
   const seqB = parseNomorLHPSeq(b.nomor_lhp);
   if(seqA !== null && seqB !== null && seqA !== seqB) return seqA - seqB;
 
-  // 4. fallback terakhir: waktu diproses
+  // 5. fallback terakhir: waktu diproses
   return new Date(a.processedAt) - new Date(b.processedAt);
+}
+
+/* ============ DETEKSI DESA DARI POLA NAMA FILE ============ */
+// Contoh: "35.07_malang-35.07.26_pujon-35.07.26.2010_wiyurejo-form_a-430580-v001" -> desa "Wiyurejo"
+// (segmen kode desa punya 4 angka: XX.XX.XX.XXXX_NamaDesa, beda dari segmen kecamatan yang cuma 3 angka)
+// "35.07_malang-35.07.26_pujon-form_a-470292-v001" -> tidak ada desa (form A tingkat kecamatan)
+function extractDesaFromFileName(fileName){
+  if(!fileName) return null;
+  const parts = fileName.split('-');
+  for(const part of parts){
+    const m = part.match(/^\d{2}\.\d{2}\.\d{2}\.\d+_(.+)$/);
+    if(m){
+      return m[1].replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+  }
+  return null;
 }
 
 function renderLaporanTable(){
@@ -1001,12 +1023,14 @@ function renderLaporanTable(){
   const sorted = [...LAPORAN].sort(compareLaporanForTable);
   const rows = sorted.map(l => {
     const n = KEJADIAN.filter(k=>k.laporan_id===l.id).length;
+    const desa = extractDesaFromFileName(l.fileName);
     const rekapBadge = l.is_rekap
       ? `<span class="tag" style="background:var(--gold); color:var(--white); border-color:var(--gold);" title="Kejadian dari laporan ini dikecualikan dari rekapitulasi/peta/skor supaya tidak double counting dengan laporan desa">REKAP</span>`
       : '';
     return `<tr${l.is_rekap ? ' style="opacity:0.72;"' : ''}>
       <td style="text-align:left; font-family:'IBM Plex Sans',sans-serif; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${l.fileName||''}">${l.fileName||l.id}</td>
       <td style="text-align:left;">${l.kecamatan||'—'}</td>
+      <td style="text-align:left;">${desa||'—'}</td>
       <td style="text-align:left;">${l.nomor_lhp||'—'}</td>
       <td>${n}${rekapBadge ? '<br>'+rekapBadge : ''}</td>
       <td>${l.processedAt ? new Date(l.processedAt).toLocaleString('id-ID') : '—'}</td>
@@ -1018,7 +1042,7 @@ function renderLaporanTable(){
     </tr>`;
   }).join('');
   document.getElementById('laporan-table-wrap').innerHTML = `<table class="matrix" style="min-width:0;">
-    <thead><tr><th style="text-align:left;">File</th><th style="text-align:left;">Kecamatan</th><th style="text-align:left;">Nomor LHP</th><th>Kejadian</th><th>Diproses</th><th>Aksi</th></tr></thead>
+    <thead><tr><th style="text-align:left;">File</th><th style="text-align:left;">Kecamatan</th><th style="text-align:left;">Desa</th><th style="text-align:left;">Nomor LHP</th><th>Kejadian</th><th>Diproses</th><th>Aksi</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
 }
