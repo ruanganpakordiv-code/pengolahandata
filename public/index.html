@@ -941,6 +941,56 @@ function laporanCountByKecamatan(kecamatan){
 }
 
 /* ============ TAB 1: DAFTAR LAPORAN TERSIMPAN (proses ulang / hapus per laporan) ============ */
+/* ============ URUTAN TABEL LAPORAN: kecamatan A-Z, lalu tanggal kejadian dari Nomor LHP ============ */
+const ROMAN_MONTH = {I:1,II:2,III:3,IV:4,V:5,VI:6,VII:7,VIII:8,IX:9,X:10,XI:11,XII:12};
+function parseNomorLHPDate(nomor){
+  if(!nomor) return null;
+  // Pola 1: tanggal dengan bulan angka romawi di akhir, mis. ".../13/X/2024" atau ".../13/IX/2024"
+  let m = nomor.match(/(\d{1,2})\/([IVXivx]+)\/(\d{4})\s*$/);
+  if(m){
+    const day = parseInt(m[1],10);
+    const month = ROMAN_MONTH[m[2].toUpperCase()];
+    const year = parseInt(m[3],10);
+    if(month) return new Date(year, month-1, day);
+  }
+  // Pola 2: tanggal numerik di akhir, mis. ".../20/07/2024"
+  m = nomor.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s*$/);
+  if(m){
+    const day = parseInt(m[1],10);
+    const month = parseInt(m[2],10);
+    const year = parseInt(m[3],10);
+    if(month>=1 && month<=12) return new Date(year, month-1, day);
+  }
+  return null;
+}
+function parseNomorLHPSeq(nomor){
+  if(!nomor) return null;
+  const m = nomor.match(/^(\d+)\//);
+  return m ? parseInt(m[1],10) : null;
+}
+function compareLaporanForTable(a, b){
+  // 1. Kecamatan A-Z (yang kosong/null ditaruh paling akhir)
+  const kecA = a.kecamatan || '\uffff';
+  const kecB = b.kecamatan || '\uffff';
+  const kecCompare = kecA.localeCompare(kecB, 'id');
+  if(kecCompare !== 0) return kecCompare;
+
+  // 2. Tanggal kejadian yang diambil dari Nomor LHP (bulan romawi/numerik sebelum tahun)
+  const dateA = parseNomorLHPDate(a.nomor_lhp);
+  const dateB = parseNomorLHPDate(b.nomor_lhp);
+  if(dateA && dateB && dateA.getTime() !== dateB.getTime()) return dateA - dateB;
+  if(dateA && !dateB) return -1;
+  if(!dateA && dateB) return 1;
+
+  // 3. Nomor urut LHP (angka paling depan)
+  const seqA = parseNomorLHPSeq(a.nomor_lhp);
+  const seqB = parseNomorLHPSeq(b.nomor_lhp);
+  if(seqA !== null && seqB !== null && seqA !== seqB) return seqA - seqB;
+
+  // 4. fallback terakhir: waktu diproses
+  return new Date(a.processedAt) - new Date(b.processedAt);
+}
+
 function renderLaporanTable(){
   const rekapCount = LAPORAN.filter(l => l.is_rekap).length;
   document.getElementById('laporan-table-meta').textContent = LAPORAN.length + ' LAPORAN' + (rekapCount ? ` · ${rekapCount} DITANDAI REKAP (kejadiannya dikecualikan dari hitungan)` : '');
@@ -948,7 +998,7 @@ function renderLaporanTable(){
     document.getElementById('laporan-table-wrap').innerHTML = '<div class="empty-note" style="padding:12px;">Belum ada laporan diunggah.</div>';
     return;
   }
-  const sorted = [...LAPORAN].sort((a,b)=> new Date(b.processedAt) - new Date(a.processedAt));
+  const sorted = [...LAPORAN].sort(compareLaporanForTable);
   const rows = sorted.map(l => {
     const n = KEJADIAN.filter(k=>k.laporan_id===l.id).length;
     const rekapBadge = l.is_rekap
