@@ -322,6 +322,32 @@
 <body>
 
 <div class="app-shell">
+  <!-- Modal Kelola Gemini API Key -- SENGAJA di level app-shell, bukan di dalam salah satu
+       tabpanel, supaya tombol di sidebar (yang muncul di semua tab) selalu bisa membukanya.
+       Kalau ini dipindah lagi ke dalam .tabpanel, tombolnya cuma akan berfungsi saat tab
+       itu aktif (tabpanel non-aktif punya display:none yang menyembunyikan modal juga). -->
+  <div id="apiKeyModalOverlay">
+    <div class="apikey-modal">
+      <div class="apikey-modal-head">
+        <h3>Kelola Gemini API Key</h3>
+        <button class="apikey-modal-close" id="closeApiKeyModalBtn">TUTUP ✕</button>
+      </div>
+      <div class="apikey-modal-body">
+        <div class="apikey-modal-sub">Kunci hanya tersimpan di browser Anda (localStorage), tidak dikirim ke server mana pun. Boleh tempel sampai 25 kunci sekaligus, dipisah koma atau baris baru. Dapatkan gratis di <strong>aistudio.google.com/apikey</strong>.</div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#9AA5B8;">
+          <span>Kuota per kunci:</span>
+          <input type="number" id="keyQuotaInput" min="1" style="width:64px; font-family:'IBM Plex Mono',monospace; font-size:12px; padding:5px 7px; border:1px solid var(--line); background:var(--paper); color:var(--ink);">
+          <span>kali pakai per hari, reset otomatis tiap jam 15:00</span>
+        </div>
+        <div class="apikey-add-row" style="align-items:flex-start;">
+          <textarea id="apiKeyModalInput" rows="4" placeholder="Tempel 1 sampai 25 Gemini API key di sini, pisahkan dengan koma atau baris baru per key…" style="flex:1; font-family:'IBM Plex Mono',monospace; font-size:12px; padding:8px 10px; border:1px solid var(--line); background:var(--paper); color:var(--ink); resize:vertical;"></textarea>
+          <button class="btn" id="apiKeyModalAddBtn">Tambah</button>
+        </div>
+        <div class="apikey-list" id="apiKeyModalList"></div>
+      </div>
+    </div>
+  </div>
+
   <aside class="sidebar">
     <div class="sidebar-brand">
       <div class="eyebrow">Bawaslu Kab. Malang</div>
@@ -361,29 +387,6 @@
 
   <!-- TAB 1: INPUT -->
   <section class="tabpanel active" id="tab-input">
-    <!-- Modal Kelola Gemini API Key -->
-    <div id="apiKeyModalOverlay">
-      <div class="apikey-modal">
-        <div class="apikey-modal-head">
-          <h3>Kelola Gemini API Key</h3>
-          <button class="apikey-modal-close" id="closeApiKeyModalBtn">TUTUP ✕</button>
-        </div>
-        <div class="apikey-modal-body">
-          <div class="apikey-modal-sub">Kunci hanya tersimpan di browser Anda (localStorage), tidak dikirim ke server mana pun. Boleh tempel sampai 25 kunci sekaligus, dipisah koma atau baris baru. Dapatkan gratis di <strong>aistudio.google.com/apikey</strong>.</div>
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#9AA5B8;">
-            <span>Kuota per kunci:</span>
-            <input type="number" id="keyQuotaInput" min="1" style="width:64px; font-family:'IBM Plex Mono',monospace; font-size:12px; padding:5px 7px; border:1px solid var(--line); background:var(--paper); color:var(--ink);">
-            <span>kali pakai per hari, reset otomatis tiap jam 15:00</span>
-          </div>
-          <div class="apikey-add-row" style="align-items:flex-start;">
-            <textarea id="apiKeyModalInput" rows="4" placeholder="Tempel 1 sampai 25 Gemini API key di sini, pisahkan dengan koma atau baris baru per key…" style="flex:1; font-family:'IBM Plex Mono',monospace; font-size:12px; padding:8px 10px; border:1px solid var(--line); background:var(--paper); color:var(--ink); resize:vertical;"></textarea>
-            <button class="btn" id="apiKeyModalAddBtn">Tambah</button>
-          </div>
-          <div class="apikey-list" id="apiKeyModalList"></div>
-        </div>
-      </div>
-    </div>
-
     <div class="panel">
       <div class="panel-head"><h2>Unggah Form A</h2><span class="panel-num">Maks. 250 PDF sekaligus</span></div>
       <div class="panel-body">
