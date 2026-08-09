@@ -20,9 +20,12 @@ CREATE TABLE laporan (
   tahapan_diawasi TEXT,
   nama_pengawas TEXT,
   jabatan_pengawas TEXT,
-  is_rekap INTEGER DEFAULT 0  -- 1 = laporan Kecamatan yang sifatnya rekap/inventarisir
-                              -- multi-desa (kejadiannya DIKECUALIKAN dari perhitungan
-                              -- supaya tidak double counting dengan laporan desa/PKD)
+  is_rekap INTEGER DEFAULT 0, -- 1 = laporan Kecamatan yang sifatnya rekap/inventarisir
+                               -- multi-desa (kejadiannya DIKECUALIKAN dari perhitungan
+                               -- supaya tidak double counting dengan laporan desa/PKD)
+  r2_key TEXT                 -- path lengkap PDF di R2, mis. "Kecamatan Pujon Desa
+                               -- Wiyurejo/lap_xxx.pdf" -- diisi otomatis saat upload
+                               -- berdasarkan pola nama file (lihat functions/api/pdf/[id].js)
 );
 
 CREATE TABLE kejadian (

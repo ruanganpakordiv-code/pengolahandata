@@ -109,7 +109,56 @@ yang sama — tidak perlu redeploy apa pun. Bisa isi beberapa kunci sekaligus
 dipisah koma; sistem otomatis mencoba kunci berikutnya kalau salah satu kena
 limit.
 
-### 8. Deploy
+### 8. Setup login (WAJIB, situs terkunci total tanpa ini)
+
+Sejak update ini, seluruh situs (termasuk file statis dan semua `/api/*`)
+dikunci lewat `functions/_middleware.js` — tidak ada satu pun halaman yang
+bisa diakses tanpa login, termasuk oleh mesin pencari/orang luar. Wajib set
+dua environment variable ini dulu, kalau tidak situs akan menampilkan pesan
+error "Autentikasi belum dikonfigurasi":
+
+Dashboard Cloudflare → **Workers & Pages** → proyek ini → **Settings** →
+**Environment variables** → tambahkan untuk **Production** (dan **Preview**
+kalau dipakai):
+
+| Nama | Nilai | Tipe |
+|---|---|---|
+| `AUTH_PASSWORD` | password yang ingin dipakai untuk login | **Encrypt** (secret) |
+| `AUTH_SECRET` | string acak panjang, mis. hasil `openssl rand -hex 32` — dipakai menandatangani sesi, JANGAN sama dengan `AUTH_PASSWORD` | **Encrypt** (secret) |
+
+Setelah disimpan, **redeploy** (push commit baru, atau tombol "Retry
+deployment" di dashboard) supaya environment variable-nya terbaca. Sesi login
+berlaku 7 hari per browser (cookie `httpOnly`), lalu diminta login ulang.
+Tombol "Keluar" ada di pojok kanan atas aplikasi.
+
+### 9. Migrasi database untuk folder R2 otomatis
+
+PDF sekarang otomatis disimpan ke folder R2 bertingkat sesuai kategori
+pengawas (ditentukan dari pola nama file Form A):
+
+- Tidak ada segmen kecamatan/desa (Bawaslu Kab.) → folder **`Form A Kabupaten`**
+- Ada segmen kecamatan saja (Panwaslu Kec.) → folder **`Kecamatan <Nama>`**
+- Ada segmen kecamatan + desa, tanpa TPS (PKD) → folder **`Kecamatan <Nama>/Desa <Nama>`**
+- Ada segmen kecamatan + desa + TPS, mis. `..._TPS01_...` (PKD tingkat TPS)
+  → folder **`Kecamatan <Nama>/Desa <Nama>/TPS <NNN>`**
+
+Penulisan angka TPS di nama file boleh macam-macam (`TPS01`, `TPS1`, `TPS001`)
+— semua otomatis dinormalisasi jadi 3 digit (`TPS 001`) supaya tidak dianggap
+TPS berbeda hanya karena beda cara penulisan angka nolnya.
+
+Kalau database D1 kamu sudah pernah dijalankan sebelumnya (bukan instalasi
+baru), jalankan migrasi ini SEKALI supaya tabel `laporan` punya kolom baru
+`r2_key` (path folder PDF-nya) — tidak menghapus data yang sudah ada:
+
+```bash
+wrangler d1 execute db_pengawasan --file=./migrations/0001_add_r2_key.sql --remote
+```
+
+Laporan lama yang PDF-nya sempat gagal tersimpan (karena bug binding R2
+sebelumnya) tetap perlu diunggah ulang manual — fitur folder otomatis ini
+hanya berlaku untuk PDF yang diunggah setelah migrasi & deploy ini.
+
+### 10. Deploy
 
 Push ke `main` otomatis men-deploy. Atau paksa manual:
 
@@ -131,16 +180,25 @@ browser.)
 ```
 ├── public/
 │   ├── index.html                     # UI 4 tab: Input, Peta, Ringkasan, Infografis
+│   ├── login.html                     # halaman login (satu-satunya jalur masuk tanpa sesi)
 │   └── data/
 │       ├── kecamatan-malang.geojson   # 33 kecamatan Kabupaten Malang (disederhanakan)
 │       ├── ikp-indikator.json         # 61 indikator IKP (dimensi/sub dimensi/indikator)
 │       └── kecamatan-desa.json        # daftar desa per kecamatan
 ├── functions/
+│   ├── _middleware.js                 # gerbang login untuk SEMUA request (situs + API)
+│   ├── _lib/
+│   │   └── auth.js                    # helper tanda tangan/verifikasi cookie sesi
 │   └── api/
+│       ├── login.js                   # POST -> cek password, set cookie sesi
+│       ├── logout.js                  # POST -> hapus cookie sesi
 │       ├── laporan.js                 # GET (semua laporan+kejadian) / POST (simpan baru)
-│       └── laporan/[id].js            # DELETE satu laporan beserta kejadiannya
+│       ├── laporan/[id].js            # PUT/PATCH/DELETE satu laporan beserta kejadiannya
+│       └── pdf/[id].js                # PUT/GET/DELETE PDF asli ke/dari R2 (folder otomatis)
+├── migrations/
+│   └── 0001_add_r2_key.sql             # migrasi tambah kolom r2_key (utk DB yang sudah ada)
 ├── schema.sql                          # skema tabel D1: laporan + kejadian
-├── wrangler.toml                       # konfigurasi Cloudflare
+├── wrangler.toml                       # konfigurasi Cloudflare (D1 + R2 binding)
 └── README.md
 ```
 

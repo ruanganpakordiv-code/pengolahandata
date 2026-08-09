@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login - Sistem Pengolahan Data Hasil Pengawasan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&family=Source+Serif+4:wght@700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F1EDE3;
+    --paper-deep:#E7E1D2;
+    --maroon:#13294B;
+    --maroon-deep:#0A1830;
+    --gold:#E2711D;
+    --gold-bright:#F79320;
+    --line:#C9BFA8;
+    --white:#FBFAF6;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:var(--paper); font-family:'IBM Plex Sans', sans-serif; color:var(--maroon);
+    padding:20px;
+  }
+  .card{
+    width:100%; max-width:380px; background:var(--white); border:1px solid var(--line);
+    padding:32px 28px; position:relative;
+  }
+  .stripe{
+    height:6px; margin:-32px -28px 24px -28px;
+    background:repeating-linear-gradient(90deg, var(--maroon) 0 18px, var(--gold-bright) 18px 36px);
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.06em;
+    color:var(--gold); font-weight:600; text-transform:uppercase; margin-bottom:6px;
+  }
+  h1{
+    font-family:'Source Serif 4', serif; font-weight:700; font-size:22px; margin:0 0 4px 0;
+  }
+  p.sub{ font-size:13px; color:#5c5646; margin:0 0 24px 0; }
+  label{ font-size:12px; font-weight:600; display:block; margin-bottom:6px; }
+  input[type=password]{
+    width:100%; padding:10px 12px; border:1px solid var(--line); background:var(--paper);
+    font-family:'IBM Plex Sans', sans-serif; font-size:14px; color:var(--maroon);
+    margin-bottom:16px;
+  }
+  input[type=password]:focus{ outline:2px solid var(--gold-bright); outline-offset:1px; }
+  button{
+    width:100%; padding:11px; border:none; background:var(--maroon); color:var(--white);
+    font-family:'IBM Plex Sans', sans-serif; font-weight:600; font-size:14px; cursor:pointer;
+  }
+  button:hover{ background:var(--maroon-deep); }
+  button:disabled{ opacity:0.6; cursor:default; }
+  .error{
+    font-size:13px; color:#B3261E; margin:-8px 0 16px 0; display:none;
+  }
+  .footer-note{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; color:#8a8370;
+    margin-top:20px; text-align:center;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="stripe"></div>
+    <div class="eyebrow">Badan Pengawas Pemilihan Umum · Kabupaten Malang</div>
+    <h1>Sistem Pengolahan Data Hasil Pengawasan</h1>
+    <p class="sub">Masukkan password untuk mengakses sistem.</p>
+    <form id="loginForm">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" autocomplete="current-password" autofocus required>
+      <div class="error" id="errorMsg"></div>
+      <button type="submit" id="submitBtn">Masuk</button>
+    </form>
+    <div class="footer-note">Akses dibatasi hanya untuk internal Bawaslu Kab. Malang</div>
+  </div>
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const errorEl = document.getElementById('errorMsg');
+  const password = document.getElementById('password').value;
+  errorEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Memeriksa…';
+  try{
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok){
+      throw new Error(data.error || 'Gagal login');
+    }
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = params.get('next') || '/';
+  }catch(err){
+    errorEl.textContent = err.message;
+    errorEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Masuk';
+  }
+});
+</script>
+</body>
+</html>

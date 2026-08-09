@@ -271,7 +271,10 @@
       <h1 class="title">Sistem Pengolahan Data Hasil Pengawasan</h1>
       <div class="subtitle">Digitalisasi LHP Form A — Pemetaan Kerawanan Berdasarkan 61 Indikator IKP, 33 Kecamatan</div>
     </div>
-    <div class="status-badge"><span class="status-dot"></span><span id="status-text">memuat data…</span></div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div class="status-badge"><span class="status-dot"></span><span id="status-text">memuat data…</span></div>
+      <button id="logoutBtn" style="padding:6px 12px; border:1px solid var(--line); background:var(--white); color:var(--maroon); font-family:'IBM Plex Sans',sans-serif; font-size:12px; font-weight:600; cursor:pointer;">Keluar</button>
+    </div>
   </div>
   <div class="tabnav">
     <button class="tabbtn active" data-tab="input"><span class="n">1</span>Input LHP</button>
@@ -589,7 +592,8 @@ async function updateLaporan(id, laporan, kejadian){
 /* ============ PENYIMPANAN PDF ASLI KE R2 (dipakai untuk fitur "Proses Ulang") ============ */
 async function uploadPdfToR2(id, file){
   try{
-    const res = await fetch('/api/pdf/' + encodeURIComponent(id), {
+    const folder = computeR2FolderFromFileName(file.name); // lihat definisi di bawah (dekat extractDesaFromFileName)
+    const res = await fetch('/api/pdf/' + encodeURIComponent(id) + '?folder=' + encodeURIComponent(folder), {
       method:'PUT',
       headers:{'Content-Type': file.type || 'application/pdf'},
       body: file
@@ -1009,14 +1013,33 @@ function compareLaporanForTable(a, b){
 // Contoh: "35.07_malang-35.07.26_pujon-35.07.26.2010_wiyurejo-form_a-430580-v001" -> desa "Wiyurejo"
 // (segmen kode desa punya 4 angka: XX.XX.XX.XXXX_NamaDesa, beda dari segmen kecamatan yang cuma 3 angka)
 // "35.07_malang-35.07.26_pujon-form_a-470292-v001" -> tidak ada desa (form A tingkat kecamatan)
+// Kalau ada suffix "_TPSxx_" nempel di segmen yang sama (form A tingkat TPS, lihat
+// extractTpsFromFileName di bawah), suffix itu dibuang dulu supaya nama desa tetap bersih
+// -- mis. "35.07.26.2010_wiyurejo_TPS01_" -> desa tetap "Wiyurejo" (bukan "Wiyurejo Tps01").
 function extractDesaFromFileName(fileName){
   if(!fileName) return null;
   const parts = fileName.split('-');
   for(const part of parts){
     const m = part.match(/^\d{2}\.\d{2}\.\d{2}\.\d+_(.+)$/);
     if(m){
-      return m[1].replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const desaRaw = m[1].replace(/_TPS0*\d+_?$/i, '');
+      return desaRaw.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     }
+  }
+  return null;
+}
+
+/* ============ DETEKSI NOMOR TPS DARI POLA NAMA FILE ============
+   Contoh: "...-35.07.26.2010_wiyurejo_TPS01_-form_a-430580-v001" -> TPS "001"
+   Penulisan angkanya boleh macam-macam di lapangan (TPS01, TPS1, TPS001, dst) --
+   semua dinormalisasi jadi 3 digit (001, 002, ...) supaya urutan foldernya rapi
+   dan tidak dianggap TPS berbeda cuma karena beda cara penulisan angka nolnya. */
+function extractTpsFromFileName(fileName){
+  if(!fileName) return null;
+  const parts = fileName.split('-');
+  for(const part of parts){
+    const m = part.match(/^\d{2}\.\d{2}\.\d{2}\.\d+_.+_TPS0*(\d+)_?$/i);
+    if(m) return m[1].padStart(3, '0');
   }
   return null;
 }
@@ -1025,7 +1048,7 @@ function extractDesaFromFileName(fileName){
 // Segmen kode kecamatan (3 angka: XX.XX.XX_NamaKecamatan) dicek terpisah dari segmen desa (4 angka).
 // Tidak ada segmen kecamatan maupun desa sama sekali -> Bawaslu Kab.
 // Ada segmen kecamatan tapi tidak ada segmen desa -> Panwaslu Kec.
-// Ada segmen desa -> PKD (Pengawas Kelurahan/Desa)
+// Ada segmen desa (dengan atau tanpa TPS) -> PKD (Pengawas Kelurahan/Desa)
 function extractKecamatanSegmentFromFileName(fileName){
   if(!fileName) return null;
   const parts = fileName.split('-');
@@ -1039,6 +1062,25 @@ function detectTingkatPengawas(fileName){
   if(extractDesaFromFileName(fileName)) return 'PKD';
   if(extractKecamatanSegmentFromFileName(fileName)) return 'Panwaslu Kec.';
   return 'Bawaslu Kab.';
+}
+
+/* ============ NAMA FOLDER R2 OTOMATIS DARI POLA NAMA FILE ============
+   Folder bertingkat sungguhan (pakai "/" -> muncul sebagai folder-dalam-folder di R2):
+   - Tidak ada segmen kecamatan/desa (Bawaslu Kab.)   -> "Form A Kabupaten"
+   - Ada segmen kecamatan saja (Panwaslu Kec.)         -> "Kecamatan <Nama>"
+   - Ada segmen kecamatan + desa (PKD)                 -> "Kecamatan <Nama>/Desa <Nama>"
+   - Ada segmen kecamatan + desa + TPS (PKD tingkat TPS) -> "Kecamatan <Nama>/Desa <Nama>/TPS <NNN>"
+   Dipakai saat upload PDF ke R2 (lihat uploadPdfToR2 di atas) supaya PDF otomatis
+   tersimpan rapi sesuai kategori pengawas yang mengunggahnya. */
+function computeR2FolderFromFileName(fileName){
+  const kecSegment = extractKecamatanSegmentFromFileName(fileName);
+  if(!kecSegment) return 'Form A Kabupaten';
+  const kecNama = kecSegment.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const desa = extractDesaFromFileName(fileName);
+  if(!desa) return `Kecamatan ${kecNama}`;
+  const tps = extractTpsFromFileName(fileName);
+  if(tps) return `Kecamatan ${kecNama}/Desa ${desa}/TPS ${tps}`;
+  return `Kecamatan ${kecNama}/Desa ${desa}`;
 }
 
 function renderLaporanTable(){
@@ -1781,6 +1823,10 @@ async function init(){
   ['dragleave','drop'].forEach(evt=>dropzone.addEventListener(evt, e=>{e.preventDefault(); dropzone.classList.remove('dragover');}));
   dropzone.addEventListener('drop', e=>{ e.preventDefault(); handleFiles(Array.from(e.dataTransfer.files)); });
 }
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  try{ await fetch('/api/logout', { method: 'POST' }); }catch(e){}
+  window.location.href = '/login';
+});
 init();
 </script>
 </body>
