@@ -324,6 +324,7 @@
       <h2>Daftar Laporan Tersimpan</h2>
       <div style="display:flex; align-items:center; gap:10px;">
         <span class="panel-num" id="laporan-table-meta">0 LAPORAN</span>
+        <button class="btn" id="deleteSelectedBtn" style="padding:5px 10px; border-color:var(--maroon); color:var(--maroon);" disabled>🗑 Hapus Terpilih (0)</button>
         <button class="btn btn-orange" id="reprocessAllBtn" style="padding:5px 10px;">🔄 Proses Ulang Semua</button>
       </div>
     </div>
@@ -482,6 +483,7 @@ let GEOJSON = null;
 let LAPORAN = [];
 let KEJADIAN = [];
 let COUNTABLE_KEJADIAN = []; // = KEJADIAN dikurangi kejadian dari laporan yang ditandai is_rekap (cegah double counting)
+let selectedLaporanIds = new Set(); // id laporan yang dicentang di tabel "Daftar Laporan Tersimpan", untuk hapus massal
 function recomputeCountable(){
   const rekapIds = new Set(LAPORAN.filter(l => l.is_rekap).map(l => l.id));
   COUNTABLE_KEJADIAN = KEJADIAN.filter(k => !rekapIds.has(k.laporan_id));
@@ -1042,11 +1044,16 @@ function detectTingkatPengawas(fileName){
 function renderLaporanTable(){
   const rekapCount = LAPORAN.filter(l => l.is_rekap).length;
   document.getElementById('laporan-table-meta').textContent = LAPORAN.length + ' LAPORAN' + (rekapCount ? ` · ${rekapCount} DITANDAI REKAP (kejadiannya dikecualikan dari hitungan)` : '');
+  // buang id yang sudah tidak ada lagi di LAPORAN (mis. baru saja dihapus) dari seleksi
+  const validIds = new Set(LAPORAN.map(l => l.id));
+  selectedLaporanIds.forEach(id => { if(!validIds.has(id)) selectedLaporanIds.delete(id); });
   if(!LAPORAN.length){
     document.getElementById('laporan-table-wrap').innerHTML = '<div class="empty-note" style="padding:12px;">Belum ada laporan diunggah.</div>';
+    updateDeleteSelectedUI();
     return;
   }
   const sorted = [...LAPORAN].sort(compareLaporanForTable);
+  const allSelected = sorted.length > 0 && sorted.every(l => selectedLaporanIds.has(l.id));
   const rows = sorted.map(l => {
     const n = KEJADIAN.filter(k=>k.laporan_id===l.id).length;
     const desa = extractDesaFromFileName(l.fileName);
@@ -1054,7 +1061,9 @@ function renderLaporanTable(){
     const rekapBadge = l.is_rekap
       ? `<span class="tag" style="background:var(--gold); color:var(--white); border-color:var(--gold);" title="Kejadian dari laporan ini dikecualikan dari rekapitulasi/peta/skor supaya tidak double counting dengan laporan desa">REKAP</span>`
       : '';
+    const checked = selectedLaporanIds.has(l.id) ? 'checked' : '';
     return `<tr${l.is_rekap ? ' style="opacity:0.72;"' : ''}>
+      <td style="text-align:center; width:28px;"><input type="checkbox" class="laporan-checkbox" data-id="${l.id}" ${checked} onchange="toggleLaporanSelection('${l.id}', this.checked)"></td>
       <td style="text-align:left; font-family:'IBM Plex Sans',sans-serif; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${l.fileName||''}">${l.fileName||l.id}</td>
       <td style="text-align:left;">${tingkat}</td>
       <td style="text-align:left;">${l.kecamatan||'—'}</td>
@@ -1070,10 +1079,60 @@ function renderLaporanTable(){
     </tr>`;
   }).join('');
   document.getElementById('laporan-table-wrap').innerHTML = `<table class="matrix" style="min-width:0;">
-    <thead><tr><th style="text-align:left;">File</th><th style="text-align:left;">Pengawas</th><th style="text-align:left;">Kecamatan</th><th style="text-align:left;">Desa</th><th style="text-align:left;">Nomor LHP</th><th>Kejadian</th><th>Diproses</th><th>Aksi</th></tr></thead>
+    <thead><tr><th style="width:28px;"><input type="checkbox" id="selectAllLaporanCheckbox" ${allSelected ? 'checked' : ''} onchange="toggleSelectAllLaporan(this.checked)" title="Pilih semua"></th><th style="text-align:left;">File</th><th style="text-align:left;">Pengawas</th><th style="text-align:left;">Kecamatan</th><th style="text-align:left;">Desa</th><th style="text-align:left;">Nomor LHP</th><th>Kejadian</th><th>Diproses</th><th>Aksi</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
+  updateDeleteSelectedUI();
 }
+function toggleLaporanSelection(id, checked){
+  if(checked) selectedLaporanIds.add(id); else selectedLaporanIds.delete(id);
+  updateDeleteSelectedUI();
+  const selectAllEl = document.getElementById('selectAllLaporanCheckbox');
+  if(selectAllEl) selectAllEl.checked = LAPORAN.length > 0 && LAPORAN.every(l => selectedLaporanIds.has(l.id));
+}
+function toggleSelectAllLaporan(checked){
+  if(checked) LAPORAN.forEach(l => selectedLaporanIds.add(l.id));
+  else selectedLaporanIds.clear();
+  document.querySelectorAll('.laporan-checkbox').forEach(cb => { cb.checked = checked; });
+  updateDeleteSelectedUI();
+}
+function updateDeleteSelectedUI(){
+  const btn = document.getElementById('deleteSelectedBtn');
+  if(!btn) return;
+  const n = selectedLaporanIds.size;
+  btn.textContent = `🗑 Hapus Terpilih (${n})`;
+  btn.disabled = n === 0;
+}
+async function deleteSelectedFromTable(){
+  const ids = Array.from(selectedLaporanIds);
+  if(!ids.length) return;
+  const labels = ids.map(id => (LAPORAN.find(l => l.id === id)?.fileName) || id);
+  if(!confirm(`Hapus ${ids.length} laporan terpilih beserta seluruh kejadiannya?\n\n${labels.slice(0,5).join('\n')}${labels.length>5 ? `\n… dan ${labels.length-5} lainnya` : ''}\n\nTindakan ini tidak bisa dibatalkan.`)) return;
+  const btn = document.getElementById('deleteSelectedBtn');
+  btn.disabled = true;
+  let okCount = 0, failCount = 0;
+  for(const id of ids){
+    try{
+      const res = await fetch('/api/laporan/' + encodeURIComponent(id), { method: 'DELETE' });
+      if(!res.ok){
+        const d = await res.json().catch(()=>({}));
+        throw new Error(d.error || ('gagal menghapus (' + res.status + ')'));
+      }
+      LAPORAN = LAPORAN.filter(l => l.id !== id);
+      KEJADIAN = KEJADIAN.filter(k => k.laporan_id !== id);
+      fetch('/api/pdf/' + encodeURIComponent(id), { method: 'DELETE' }).catch(()=>{}); // best-effort
+      selectedLaporanIds.delete(id);
+      okCount++;
+    }catch(e){
+      console.error('Gagal menghapus', id, e);
+      failCount++;
+    }
+  }
+  renderAll();
+  document.getElementById('last-updated').textContent = 'Terakhir diperbarui: ' + new Date().toLocaleString('id-ID');
+  if(failCount) alert(`Selesai — ${okCount} laporan berhasil dihapus, ${failCount} gagal (lihat console untuk detail).`);
+}
+document.getElementById('deleteSelectedBtn').addEventListener('click', deleteSelectedFromTable);
 async function toggleRekapFromTable(id, newValue){
   const laporan = LAPORAN.find(l => l.id === id);
   if(!laporan) return;
