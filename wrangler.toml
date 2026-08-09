@@ -1,7 +1,7 @@
 name = "sistem-pengolahan-data-hasil-pengawasan"
 compatibility_date = "2024-09-23"
 pages_build_output_dir = "public"
-
+ 
 # Setelah membuat database dengan:
 #   wrangler d1 create db_pengawasan
 # salin "database_id" yang muncul ke bawah ini.
@@ -9,7 +9,7 @@ pages_build_output_dir = "public"
 binding = "DB"
 database_name = "db_pengawasan"
 database_id = "400d7afe-6110-4b84-b7d3-9edcc94947b4"
-
+ 
 [[r2_buckets]]
 bucket_name = "lhp-pdf-storage"
-binding = "lhp_pdf_storage"
+binding = "PDF_BUCKET"
