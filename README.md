@@ -194,7 +194,8 @@ browser.)
 │       ├── logout.js                  # POST -> hapus cookie sesi
 │       ├── laporan.js                 # GET (semua laporan+kejadian) / POST (simpan baru)
 │       ├── laporan/[id].js            # PUT/PATCH/DELETE satu laporan beserta kejadiannya
-│       └── pdf/[id].js                # PUT/GET/DELETE PDF asli ke/dari R2 (folder otomatis)
+│       ├── pdf/[id].js                # PUT/GET/DELETE PDF asli ke/dari R2 (folder otomatis)
+│       └── kejadian/[id].js           # PATCH -> koreksi manual indicator_no satu kejadian
 ├── migrations/
 │   └── 0001_add_r2_key.sql             # migrasi tambah kolom r2_key (utk DB yang sudah ada)
 ├── schema.sql                          # skema tabel D1: laporan + kejadian

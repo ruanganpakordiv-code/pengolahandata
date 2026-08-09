@@ -1449,6 +1449,7 @@ function openIndicatorDetail(kecamatan, indicatorNo){
   if(!matches.length){
     body = '<div class="empty-note">Tidak ada kejadian tercatat.</div>';
   } else {
+    const indicatorOptions = INDIKATOR.map(i => `<option value="${i.no}">#${i.no} — ${i.indikator}</option>`).join('');
     const rows = matches.map(k => {
       const lap = LAPORAN.find(l => l.id === k.laporan_id);
       const fileName = lap ? (lap.fileName || lap.id) : '(laporan tidak ditemukan — mungkin sudah dihapus)';
@@ -1460,10 +1461,15 @@ function openIndicatorDetail(kecamatan, indicatorNo){
         <td>${tanggal}</td>
         <td>${k.desa || '—'}</td>
         <td class="col-catatan">${k.catatan || '—'}</td>
+        <td>
+          <select class="kejadian-reassign-select" data-kejadian-id="${k.id}" data-current-kec="${kecamatan}" data-current-indicator="${indicatorNo}" style="font-family:'IBM Plex Sans',sans-serif; font-size:11px; padding:3px; max-width:170px;" onchange="reassignKejadianIndicator(this)">
+            ${indicatorOptions}
+          </select>
+        </td>
       </tr>`;
     }).join('');
     body = `<table class="detail-table">
-      <thead><tr><th>File Laporan</th><th>Nomor LHP</th><th>Tanggal</th><th>Desa</th><th>Catatan</th></tr></thead>
+      <thead><tr><th>File Laporan</th><th>Nomor LHP</th><th>Tanggal</th><th>Desa</th><th>Catatan</th><th>Pindah ke indikator</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
   }
@@ -1471,6 +1477,47 @@ function openIndicatorDetail(kecamatan, indicatorNo){
   document.getElementById('d-body').innerHTML = body;
   document.getElementById('drawer').classList.add('open');
   document.getElementById('overlay').classList.add('show');
+  // set nilai terpilih SETELAH innerHTML terpasang, supaya browser tidak
+  // auto-pilih opsi pertama secara visual sebelum kita set indikator yang benar
+  if(matches.length){
+    document.querySelectorAll('.kejadian-reassign-select').forEach(sel => {
+      sel.value = String(sel.dataset.currentIndicator);
+    });
+  }
+}
+async function reassignKejadianIndicator(selectEl){
+  const kejadianId = selectEl.dataset.kejadianId;
+  const oldIndicator = Number(selectEl.dataset.currentIndicator);
+  const newIndicator = Number(selectEl.value);
+  const kecamatan = selectEl.dataset.currentKec;
+  if(newIndicator === oldIndicator) return;
+  const newInd = INDIKATOR.find(i => i.no === newIndicator);
+  if(!confirm(`Pindahkan kejadian ini ke indikator #${newIndicator} — "${newInd ? newInd.indikator : ''}"?`)) {
+    selectEl.value = String(oldIndicator); // batal, kembalikan pilihan semula
+    return;
+  }
+  selectEl.disabled = true;
+  try{
+    const res = await fetch('/api/kejadian/' + encodeURIComponent(kejadianId), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ indicator_no: newIndicator })
+    });
+    if(!res.ok){
+      const d = await res.json().catch(()=>({}));
+      throw new Error(d.error || 'Gagal menyimpan perubahan');
+    }
+    const k = KEJADIAN.find(kk => kk.id === kejadianId);
+    if(k) k.indicator_no = newIndicator;
+    renderAll();
+    // buka lagi drawer indikator ASAL (indikator lama) supaya pengguna langsung
+    // lihat baris itu hilang dari daftar -- konfirmasi visual bahwa perpindahan berhasil
+    openIndicatorDetail(kecamatan, oldIndicator);
+  }catch(e){
+    alert('Gagal memindahkan kejadian: ' + e.message);
+    selectEl.disabled = false;
+    selectEl.value = String(oldIndicator);
+  }
 }
 
 function openDrawer(name){
