@@ -203,6 +203,19 @@
   }
   .retry-btn:hover{background:var(--danger); color:var(--white);}
 
+  /* Sel tabel laporan yang bisa diedit inline (Kecamatan, Nomor LHP) */
+  .editable-cell{position:relative;}
+  .editable-cell-value{}
+  .edit-cell-btn{
+    font-family:'IBM Plex Mono',monospace; font-size:10px;
+    border:1px solid var(--line); background:transparent; color:#7C8699;
+    padding:1px 5px; cursor:pointer; margin-left:5px; opacity:0.6;
+  }
+  .editable-cell:hover .edit-cell-btn{opacity:1;}
+  .edit-cell-btn:hover{background:var(--paper-deep); color:var(--maroon); border-color:var(--maroon);}
+  .edit-cell-btn.save{color:var(--teal); border-color:var(--teal);}
+  .edit-cell-btn.save:hover{background:var(--teal); color:var(--paper);}
+
   /* REKAP matrix table */
   .matrix-wrap{overflow:auto; max-height:640px; border:1px solid var(--line); margin-top:18px;}
   table.matrix{border-collapse:collapse; font-size:11px; font-family:'IBM Plex Mono',monospace; min-width:100%;}
@@ -401,9 +414,10 @@
       </div>
     </div>
 
-    <div class="panel-head" style="margin-top:22px; border:1px solid var(--line); border-bottom:none;">
+    <div class="panel-head" style="margin-top:22px; border:1px solid var(--line); border-bottom:none; flex-wrap:wrap; gap:10px;">
       <h2>Daftar Laporan Tersimpan</h2>
-      <div style="display:flex; align-items:center; gap:10px;">
+      <input type="text" id="laporanSearchInput" placeholder="🔎 Cari kecamatan atau nomor LHP…" style="font-family:'IBM Plex Sans',sans-serif; font-size:12.5px; padding:6px 10px; border:1px solid var(--line); background:var(--paper); color:var(--ink); min-width:220px;">
+      <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
         <span class="panel-num" id="laporan-table-meta">0 LAPORAN</span>
         <button class="btn" id="deleteSelectedBtn" style="padding:5px 10px; border-color:var(--maroon); color:var(--maroon);" disabled>🗑 Hapus Terpilih (0)</button>
         <button class="btn btn-orange" id="reprocessAllBtn" style="padding:5px 10px;">🔄 Proses Ulang Semua</button>
@@ -1313,8 +1327,19 @@ function renderLaporanTable(){
     updateDeleteSelectedUI();
     return;
   }
-  const sorted = [...LAPORAN].sort(compareLaporanForTable);
+  const query = (document.getElementById('laporanSearchInput')?.value || '').trim().toLowerCase();
+  const sortedAll = [...LAPORAN].sort(compareLaporanForTable);
+  const sorted = query
+    ? sortedAll.filter(l =>
+        (l.kecamatan||'').toLowerCase().includes(query) ||
+        (l.nomor_lhp||'').toLowerCase().includes(query))
+    : sortedAll;
   const allSelected = sorted.length > 0 && sorted.every(l => selectedLaporanIds.has(l.id));
+  if(!sorted.length){
+    document.getElementById('laporan-table-wrap').innerHTML = `<div class="empty-note" style="padding:12px;">Tidak ada laporan yang cocok dengan pencarian "${query}".</div>`;
+    updateDeleteSelectedUI();
+    return;
+  }
   const rows = sorted.map(l => {
     const n = KEJADIAN.filter(k=>k.laporan_id===l.id).length;
     const desa = extractDesaFromFileName(l.fileName);
@@ -1327,9 +1352,15 @@ function renderLaporanTable(){
       <td style="text-align:center; width:28px;"><input type="checkbox" class="laporan-checkbox" data-id="${l.id}" ${checked} onchange="toggleLaporanSelection('${l.id}', this.checked)"></td>
       <td style="text-align:left; font-family:'IBM Plex Sans',sans-serif; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${l.fileName||''}">${l.fileName||l.id}</td>
       <td style="text-align:left;">${tingkat}</td>
-      <td style="text-align:left;">${l.kecamatan||'—'}</td>
+      <td style="text-align:left;" class="editable-cell" data-id="${l.id}" data-field="kecamatan">
+        <span class="editable-cell-value">${l.kecamatan||'—'}</span>
+        <button class="edit-cell-btn" onclick="startEditLaporanField('${l.id}','kecamatan')" title="Perbaiki nama kecamatan">✎</button>
+      </td>
       <td style="text-align:left;">${desa||'—'}</td>
-      <td style="text-align:left;">${l.nomor_lhp||'—'}</td>
+      <td style="text-align:left;" class="editable-cell" data-id="${l.id}" data-field="nomor_lhp">
+        <span class="editable-cell-value">${l.nomor_lhp||'—'}</span>
+        <button class="edit-cell-btn" onclick="startEditLaporanField('${l.id}','nomor_lhp')" title="Perbaiki nomor LHP">✎</button>
+      </td>
       <td>${n}${rekapBadge ? '<br>'+rekapBadge : ''}</td>
       <td>${l.processedAt ? new Date(l.processedAt).toLocaleString('id-ID') : '—'}</td>
       <td>
@@ -1344,6 +1375,56 @@ function renderLaporanTable(){
     <tbody>${rows}</tbody>
   </table>`;
   updateDeleteSelectedUI();
+}
+function startEditLaporanField(id, field){
+  const cell = document.querySelector(`.editable-cell[data-id="${id}"][data-field="${field}"]`);
+  if(!cell) return;
+  const laporan = LAPORAN.find(l => l.id === id);
+  const currentValue = (laporan && laporan[field]) || '';
+  cell.innerHTML = `
+    <input type="text" class="editable-cell-input" value="${currentValue.replace(/"/g,'&quot;')}" style="width:100%; font-family:'IBM Plex Sans',sans-serif; font-size:12px; padding:3px 5px; border:1px solid var(--maroon); background:var(--card); color:var(--ink);">
+    <div style="display:flex; gap:4px; margin-top:3px;">
+      <button class="edit-cell-btn save" onclick="saveLaporanField('${id}','${field}')" title="Simpan">✓</button>
+      <button class="edit-cell-btn" onclick="renderLaporanTable()" title="Batal">✕</button>
+    </div>`;
+  const input = cell.querySelector('.editable-cell-input');
+  input.focus();
+  input.select();
+  input.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){ e.preventDefault(); saveLaporanField(id, field); }
+    if(e.key === 'Escape'){ e.preventDefault(); renderLaporanTable(); }
+  });
+}
+async function saveLaporanField(id, field){
+  const cell = document.querySelector(`.editable-cell[data-id="${id}"][data-field="${field}"]`);
+  const input = cell?.querySelector('.editable-cell-input');
+  if(!input) return;
+  const newValue = input.value.trim();
+  const laporan = LAPORAN.find(l => l.id === id);
+  if(!laporan) return;
+  const oldValue = laporan[field] || '';
+  if(newValue === oldValue){ renderLaporanTable(); return; }
+  input.disabled = true;
+  try{
+    const res = await fetch('/api/laporan/' + encodeURIComponent(id), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field]: newValue })
+    });
+    if(!res.ok){
+      const d = await res.json().catch(()=>({}));
+      throw new Error(d.error || 'Gagal menyimpan perubahan');
+    }
+    laporan[field] = newValue;
+    if(field === 'kecamatan'){
+      // samakan juga kecamatan di semua kejadian laporan ini, supaya peta/matrix ikut konsisten
+      KEJADIAN.filter(k => k.laporan_id === id).forEach(k => { k.kecamatan = newValue; });
+    }
+    renderAll();
+  }catch(e){
+    alert('Gagal menyimpan: ' + e.message);
+    renderLaporanTable();
+  }
 }
 function toggleLaporanSelection(id, checked){
   if(checked) selectedLaporanIds.add(id); else selectedLaporanIds.delete(id);
@@ -1394,6 +1475,7 @@ async function deleteSelectedFromTable(){
   if(failCount) alert(`Selesai — ${okCount} laporan berhasil dihapus, ${failCount} gagal (lihat console untuk detail).`);
 }
 document.getElementById('deleteSelectedBtn').addEventListener('click', deleteSelectedFromTable);
+document.getElementById('laporanSearchInput').addEventListener('input', () => renderLaporanTable());
 async function toggleRekapFromTable(id, newValue){
   const laporan = LAPORAN.find(l => l.id === id);
   if(!laporan) return;
