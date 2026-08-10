@@ -416,7 +416,7 @@
 
     <div class="panel-head" style="margin-top:22px; border:1px solid var(--line); border-bottom:none; flex-wrap:wrap; gap:10px;">
       <h2>Daftar Laporan Tersimpan</h2>
-      <input type="text" id="laporanSearchInput" placeholder="🔎 Cari kecamatan atau nomor LHP…" style="font-family:'IBM Plex Sans',sans-serif; font-size:12.5px; padding:6px 10px; border:1px solid var(--line); background:var(--paper); color:var(--ink); min-width:220px;">
+      <input type="text" id="laporanSearchInput" placeholder="🔎 Cari kecamatan, nomor LHP, atau nama file…" style="font-family:'IBM Plex Sans',sans-serif; font-size:12.5px; padding:6px 10px; border:1px solid var(--line); background:var(--paper); color:var(--ink); min-width:260px;">
       <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
         <span class="panel-num" id="laporan-table-meta">0 LAPORAN</span>
         <button class="btn" id="deleteSelectedBtn" style="padding:5px 10px; border-color:var(--maroon); color:var(--maroon);" disabled>🗑 Hapus Terpilih (0)</button>
@@ -1332,7 +1332,9 @@ function renderLaporanTable(){
   const sorted = query
     ? sortedAll.filter(l =>
         (l.kecamatan||'').toLowerCase().includes(query) ||
-        (l.nomor_lhp||'').toLowerCase().includes(query))
+        (l.nomor_lhp||'').toLowerCase().includes(query) ||
+        (l.fileName||'').toLowerCase().includes(query) ||
+        (l.id||'').toLowerCase().includes(query))
     : sortedAll;
   const allSelected = sorted.length > 0 && sorted.every(l => selectedLaporanIds.has(l.id));
   if(!sorted.length){
