@@ -1,5 +1,10 @@
 // PUT    /api/laporan/:id -> perbarui metadata + ganti seluruh kejadian (dipakai "Proses Ulang")
-// PATCH  /api/laporan/:id -> ubah HANYA field is_rekap (toggle manual, tanpa reclassify/ubah kejadian)
+// PATCH  /api/laporan/:id -> koreksi manual SEBAGIAN field, tanpa reclassify/ubah kejadian.
+//                             Body boleh berisi salah satu atau kombinasi:
+//                             { is_rekap?: true|false, kecamatan?: string, nomor_lhp?: string }
+//                             Kalau "kecamatan" dikirim, ikut di-cascade ke semua baris
+//                             kejadian milik laporan ini (supaya peta/matrix/rekap tetap
+//                             konsisten dengan koreksi manual di tabel "Daftar Laporan Tersimpan").
 // DELETE /api/laporan/:id -> hapus satu laporan beserta seluruh kejadiannya
 //
 // Body PUT yang diharapkan (sama seperti POST /api/laporan, tanpa field 'id' di dalam laporan):
@@ -69,10 +74,40 @@ export async function onRequestPatch(context) {
   const { request, env, params } = context;
   try {
     const body = await request.json();
-    await env.DB.prepare("UPDATE laporan SET is_rekap = ? WHERE id = ?")
-      .bind(body.is_rekap ? 1 : 0, params.id)
-      .run();
-    return new Response(JSON.stringify({ ok: true, is_rekap: !!body.is_rekap }), {
+    const statements = [];
+
+    if (typeof body.is_rekap !== "undefined") {
+      statements.push(
+        env.DB.prepare("UPDATE laporan SET is_rekap = ? WHERE id = ?")
+          .bind(body.is_rekap ? 1 : 0, params.id)
+      );
+    }
+    if (typeof body.kecamatan === "string") {
+      const kec = body.kecamatan.trim();
+      statements.push(
+        env.DB.prepare("UPDATE laporan SET kecamatan = ? WHERE id = ?").bind(kec, params.id)
+      );
+      // cascade -- kejadian.kecamatan dipakai langsung oleh peta/matrix/rekap, jangan sampai
+      // laporan sudah dikoreksi tapi kejadiannya masih mengacu ke nama kecamatan yang lama
+      statements.push(
+        env.DB.prepare("UPDATE kejadian SET kecamatan = ? WHERE laporan_id = ?").bind(kec, params.id)
+      );
+    }
+    if (typeof body.nomor_lhp === "string") {
+      statements.push(
+        env.DB.prepare("UPDATE laporan SET nomor_lhp = ? WHERE id = ?").bind(body.nomor_lhp.trim(), params.id)
+      );
+    }
+
+    if (!statements.length) {
+      return new Response(JSON.stringify({ error: "Tidak ada field yang dikirim untuk diperbarui" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    await env.DB.batch(statements);
+    return new Response(JSON.stringify({ ok: true }), {
       headers: { "Content-Type": "application/json" }
     });
   } catch (e) {
