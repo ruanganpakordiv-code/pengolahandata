@@ -281,6 +281,10 @@
   table.detail-table .col-jml{text-align:center; font-weight:700; color:var(--maroon-deep); width:36px;}
   table.detail-table .col-catatan{font-size:11px; color:#9AA5B8;}
   table.detail-table .col-catatan ul{margin:0; padding-left:16px;}
+  ul.kejadian-item-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px;}
+  .kejadian-item-row{display:flex; align-items:flex-start; gap:8px; justify-content:space-between;}
+  .kejadian-item-text{flex:1; min-width:0;}
+  .kejadian-reassign-select-drawer{flex-shrink:0; font-family:'IBM Plex Sans',sans-serif; font-size:10.5px; padding:3px 4px; max-width:150px; border:1px solid var(--line); background:var(--paper); color:var(--ink);}
   .empty-note{font-size:12.5px; color:#7C8699; font-style:italic;}
   .tag{font-size:10.5px; font-family:'IBM Plex Mono',monospace; border:1px solid var(--line); padding:2px 6px; background:var(--paper);}
 
@@ -1833,13 +1837,14 @@ function openDrawer(name){
   INDIKATOR.forEach(ind => {
     const matches = COUNTABLE_KEJADIAN.filter(k => k.kecamatan===name && k.indicator_no===ind.no);
     if(matches.length>0){
-      rows.push({ ...ind, n: matches.length, catatan: matches.map(m=>m.catatan).filter(Boolean) });
+      rows.push({ ...ind, n: matches.length, kejadian: matches });
     }
   });
 
   if(!rows.length){
     body += '<div class="empty-note">Belum ada kejadian tercatat untuk kecamatan ini.</div>';
   } else {
+    const indicatorOptions = INDIKATOR.map(i => `<option value="${i.no}">#${i.no} — ${i.indikator}</option>`).join('');
     let lastDim = null;
     let tableRows = '';
     rows.forEach(r => {
@@ -1847,8 +1852,14 @@ function openDrawer(name){
         tableRows += `<tr class="dim-row"><td colspan="4">${r.dimensi}</td></tr>`;
         lastDim = r.dimensi;
       }
-      const catatanHtml = r.catatan.length ? `<ul>${r.catatan.map(c=>`<li>${c}</li>`).join('')}</ul>` : '—';
-      tableRows += `<tr><td>${r.no}</td><td>${r.indikator}</td><td class="col-jml">${r.n}</td><td class="col-catatan">${catatanHtml}</td></tr>`;
+      const itemsHtml = r.kejadian.map(k => `
+        <li class="kejadian-item-row">
+          <span class="kejadian-item-text">${k.catatan || '(tanpa catatan)'}</span>
+          <select class="kejadian-reassign-select-drawer" data-kejadian-id="${k.id}" data-current-kec="${name}" data-current-indicator="${r.no}" onchange="reassignKejadianIndicatorDrawer(this)">
+            ${indicatorOptions}
+          </select>
+        </li>`).join('');
+      tableRows += `<tr><td>${r.no}</td><td>${r.indikator}</td><td class="col-jml">${r.n}</td><td class="col-catatan"><ul class="kejadian-item-list">${itemsHtml}</ul></td></tr>`;
     });
     body += `<table class="detail-table">
       <thead><tr><th style="width:30px;">No</th><th>Indikator</th><th style="width:40px;">Jml</th><th>Ringkasan Kejadian</th></tr></thead>
@@ -1864,6 +1875,44 @@ function openDrawer(name){
   document.getElementById('d-body').innerHTML = body;
   document.getElementById('drawer').classList.add('open');
   document.getElementById('overlay').classList.add('show');
+  // set nilai terpilih SETELAH innerHTML terpasang, sama alasannya seperti openIndicatorDetail
+  document.querySelectorAll('.kejadian-reassign-select-drawer').forEach(sel => {
+    sel.value = String(sel.dataset.currentIndicator);
+  });
+}
+async function reassignKejadianIndicatorDrawer(selectEl){
+  const kejadianId = selectEl.dataset.kejadianId;
+  const oldIndicator = Number(selectEl.dataset.currentIndicator);
+  const newIndicator = Number(selectEl.value);
+  const kecamatan = selectEl.dataset.currentKec;
+  if(newIndicator === oldIndicator) return;
+  const newInd = INDIKATOR.find(i => i.no === newIndicator);
+  if(!confirm(`Pindahkan kejadian ini ke indikator #${newIndicator} — "${newInd ? newInd.indikator : ''}"?`)) {
+    selectEl.value = String(oldIndicator); // batal, kembalikan pilihan semula
+    return;
+  }
+  selectEl.disabled = true;
+  try{
+    const res = await fetch('/api/kejadian/' + encodeURIComponent(kejadianId), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ indicator_no: newIndicator })
+    });
+    if(!res.ok){
+      const d = await res.json().catch(()=>({}));
+      throw new Error(d.error || 'Gagal menyimpan perubahan');
+    }
+    const k = KEJADIAN.find(kk => kk.id === kejadianId);
+    if(k) k.indicator_no = newIndicator;
+    renderAll();
+    // buka lagi drawer kecamatan ini supaya baris yang berpindah langsung hilang dari
+    // indikator asal -- konfirmasi visual bahwa perpindahan berhasil
+    openDrawer(kecamatan);
+  }catch(e){
+    alert('Gagal memindahkan kejadian: ' + e.message);
+    selectEl.disabled = false;
+    selectEl.value = String(oldIndicator);
+  }
 }
 document.getElementById('drawerClose').onclick = closeDrawer;
 document.getElementById('overlay').onclick = closeDrawer;
