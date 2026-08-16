@@ -566,6 +566,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 const GEMINI_MODEL = "gemini-flash-latest";
@@ -2064,6 +2065,15 @@ function renderInfografis(){
     document.getElementById('infografisStatCards').innerHTML =
       '<div class="empty-note" style="grid-column:1/-1;">Gagal memuat library grafik (Chart.js) — cek koneksi internet Anda, lalu refresh halaman. Kalau masih gagal, kemungkinan CDN sedang bermasalah.</div>';
     return;
+  }
+  if(typeof ChartDataLabels !== 'undefined' && !Chart.registry.plugins.get('datalabels')){
+    Chart.register(ChartDataLabels);
+    Chart.defaults.plugins.datalabels = {
+      color:'#DCE3F0',
+      font:{ size:8, family:"'IBM Plex Mono',monospace" },
+      anchor:'end', align:'end', offset:2, clamp:true,
+      formatter:(v)=> (v===0 || v===undefined) ? '' : v
+    };
   }
   recomputeCountable();
   renderStatCards();
