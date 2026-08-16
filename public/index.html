@@ -477,8 +477,12 @@
     <div class="matrix-wrap" id="kerawananKecamatanWrap" style="max-height:420px;"></div>
 
     <div class="panel-head" style="margin-top:22px; border:1px solid var(--line); border-bottom:none;">
+      <h2>Skor Kerawanan per Dimensi per Kecamatan</h2>
+    </div>
+    <div class="matrix-wrap" id="kerawananDimensiKecamatanWrap" style="max-height:420px;"></div>
+
+    <div class="panel-head" style="margin-top:22px; border:1px solid var(--line); border-bottom:none;">
       <h2>Skor Kerawanan per Dimensi (Kabupaten Malang)</h2>
-      <span class="panel-num">SEPERTI TABEL 4 LAPORAN</span>
     </div>
     <div class="matrix-wrap" id="kerawananDimensiWrap" style="max-height:300px;"></div>
   </section>
@@ -1644,6 +1648,35 @@ function renderKerawananPerKecamatan(){
   </table>`;
   document.getElementById('kerawananKecamatanWrap').innerHTML = html;
 }
+function renderKerawananPerDimensiKecamatan(){
+  const dims = Object.keys(BOBOT_DIMENSI);
+  const rows = KECAMATAN_LIST.map(k => ({ kecamatan:k, kw: computeKerawanan(k) }))
+    .sort((a,b) => b.kw.totalSkor - a.kw.totalSkor);
+  const html = `<table class="matrix" style="min-width:0;">
+    <thead><tr>
+      <th style="text-align:left;">Kecamatan</th>
+      ${dims.map(d => `<th>${d}</th>`).join('')}
+      <th>Skor Total</th><th>Kategori</th>
+    </tr></thead>
+    <tbody>${rows.map(r => {
+      const cells = dims.map(d => {
+        const skor = r.kw.skorPerDimensi[d] || 0;
+        const pct = BOBOT_DIMENSI[d] > 0 ? (skor / BOBOT_DIMENSI[d]) * 100 : 0;
+        const bg = colorForKerawanan(pct, true);
+        const textColor = pct >= 35 ? '#fff' : 'var(--ink)';
+        return `<td style="background:${bg}; color:${textColor}; font-weight:600;">${skor.toFixed(2)}</td>`;
+      }).join('');
+      return `<tr>
+        <td style="text-align:left; font-family:'IBM Plex Sans',sans-serif;">${r.kecamatan}</td>
+        ${cells}
+        <td class="total-col">${r.kw.totalSkor.toFixed(2)}</td>
+        <td>${r.kw.kategori}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>
+  <div class="empty-note" style="padding:8px 12px;">Warna sel menunjukkan seberapa besar dimensi itu berkontribusi pada skor kecamatan tersebut (skor dimensi ÷ bobot maksimum dimensi), bukan perbandingan langsung antar kecamatan.</div>`;
+  document.getElementById('kerawananDimensiKecamatanWrap').innerHTML = html;
+}
 function renderKerawananPerDimensi(){
   const kw = computeKerawananKabupaten();
   const html = `<table class="matrix" style="min-width:0;">
@@ -2201,6 +2234,7 @@ function renderAll(){
   renderLaporanTable();
   renderMatrix();
   renderKerawananPerKecamatan();
+  renderKerawananPerDimensiKecamatan();
   renderKerawananPerDimensi();
   if(geoLayer){ geoLayer.eachLayer(l => l.setStyle(styleForFeature(l.feature))); }
 }
