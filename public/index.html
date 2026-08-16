@@ -299,10 +299,10 @@
 
   /* Infografis */
   .chart-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:12px;}
-  .chart-card{background:var(--card); border:1px solid var(--line); padding:12px;}
-  .chart-card h3{font-family:'Source Serif 4',serif; font-size:12.5px; margin:0 0 8px; color:var(--maroon); line-height:1.3;}
-  .chart-wrap{position:relative; height:170px;}
-  .chart-card[style*="grid-column"] .chart-wrap{height:210px;}
+  .chart-card{background:var(--card); border:1px solid var(--line); padding:8px 10px;}
+  .chart-card h3{font-family:'Source Serif 4',serif; font-size:11.5px; margin:0 0 5px; color:var(--maroon); line-height:1.25; font-weight:600;}
+  .chart-wrap{position:relative; height:110px;}
+  .chart-card[style*="grid-column"] .chart-wrap{height:150px;}
   canvas{max-width:100%;}
   .info-stat-card{
     background:var(--maroon); color:var(--white); padding:10px 12px; text-align:center; border:1px solid var(--maroon-deep);
@@ -514,13 +514,11 @@
 
     <div class="panel-head" style="border:1px solid var(--line); border-bottom:none;">
       <h2>Jumlah Kejadian per Tingkat Pelapor</h2>
-      <span class="panel-num">SEPERTI GRAFIK 1–3 LAPORAN</span>
     </div>
     <div class="chart-grid" id="tingkatChartGrid" style="border:1px solid var(--line); border-top:none; padding:12px; margin-bottom:16px;"></div>
 
     <div class="panel-head" style="border:1px solid var(--line); border-bottom:none;">
       <h2>Potensi Pelanggaran per Dimensi, per Kecamatan</h2>
-      <span class="panel-num">SEPERTI GRAFIK 4–6 LAPORAN</span>
     </div>
     <div class="chart-grid" id="dimensiKecChartGrid" style="border:1px solid var(--line); border-top:none; padding:12px; margin-bottom:16px;"></div>
 
@@ -542,7 +540,7 @@
         <div class="chart-wrap"><canvas id="chartTopIndikator"></canvas></div>
       </div>
       <div class="chart-card" style="grid-column:1 / -1;">
-        <h3>Sebaran Indikator Terbanyak per Desa (seperti Grafik 7 laporan)</h3>
+        <h3>Sebaran Indikator Terbanyak per Desa</h3>
         <div class="chart-wrap"><canvas id="chartTopIndikatorDesa"></canvas></div>
       </div>
     </div>
@@ -2029,9 +2027,9 @@ function renderTingkatCharts(){
       return;
     }
     charts[key] = new Chart(document.getElementById(canvasId), {
-      type:'doughnut',
-      data:{ labels:Object.keys(dimCounts), datasets:[{ data:Object.values(dimCounts), backgroundColor:palette }] },
-      options:{ maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ font:{ size:9 }, boxWidth:10 } } } }
+      type:'bar',
+      data:{ labels:Object.keys(dimCounts), datasets:[{ label:'Jumlah kejadian', data:Object.values(dimCounts), backgroundColor:palette }] },
+      options:{ maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true, ticks:{ precision:0, font:{ size:8 } } }, y:{ ticks:{ font:{ size:8 } } } } }
     });
   });
 }
@@ -2056,7 +2054,7 @@ function renderDimensiKecamatanCharts(){
     charts[key] = new Chart(document.getElementById(canvasId), {
       type:'bar',
       data:{ labels:kecCounts.map(x=>x.kec), datasets:[{ label:'Jumlah kejadian', data:kecCounts.map(x=>x.n), backgroundColor:'#E2711D' }] },
-      options:{ maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ font:{ size:9 } } }, y:{ beginAtZero:true, ticks:{ precision:0, font:{ size:9 } } } } }
+      options:{ maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ font:{ size:8 } } }, y:{ beginAtZero:true, ticks:{ precision:0, font:{ size:8 } } } } }
     });
   });
 }
@@ -2097,43 +2095,43 @@ function renderInfografis(){
 
   destroyChart('dimensi');
   charts.dimensi = new Chart(document.getElementById('chartDimensi'), {
-    type:'doughnut',
-    data:{ labels:Object.keys(dimCounts), datasets:[{ data:Object.values(dimCounts), backgroundColor:palette }] },
-    options:{ maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ font:{ size:9 }, boxWidth:10 } } } }
+    type:'bar',
+    data:{ labels:Object.keys(dimCounts), datasets:[{ label:'Jumlah kejadian', data:Object.values(dimCounts), backgroundColor:palette }] },
+    options:{ maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true, ticks:{ precision:0, font:{ size:8 } } }, y:{ ticks:{ font:{ size:8 } } } } }
   });
 
   destroyChart('kecamatan');
   charts.kecamatan = new Chart(document.getElementById('chartKecamatan'), {
     type:'bar',
     data:{ labels:kecCounts.map(x=>x.k), datasets:[{ label:'Jumlah kejadian', data:kecCounts.map(x=>x.n), backgroundColor:'#13294B' }] },
-    options:{ maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true, ticks:{ precision:0, font:{ size:9 } } }, y:{ ticks:{ font:{ size:9 } } } } }
+    options:{ maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true, ticks:{ precision:0, font:{ size:8 } } }, y:{ ticks:{ font:{ size:8 } } } } }
   });
 
   destroyChart('subdimensi');
   charts.subdimensi = new Chart(document.getElementById('chartSubdimensi'), {
     type:'bar',
     data:{ labels:Object.keys(subCounts), datasets:[{ label:'Jumlah kejadian', data:Object.values(subCounts), backgroundColor:'#E2711D' }] },
-    options:{ maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ font:{ size:9 } } }, y:{ beginAtZero:true, ticks:{ precision:0, font:{ size:9 } } } } }
+    options:{ maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ font:{ size:8 } } }, y:{ beginAtZero:true, ticks:{ precision:0, font:{ size:8 } } } } }
   });
 
   destroyChart('topindikator');
   charts.topindikator = new Chart(document.getElementById('chartTopIndikator'), {
     type:'bar',
     data:{ labels:topIndikator.map(x=>x.label), datasets:[{ label:'Jumlah kejadian', data:topIndikator.map(x=>x.n), backgroundColor:'#2F6690' }] },
-    options:{ maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true, ticks:{ precision:0, font:{ size:9 } } }, y:{ ticks:{ font:{ size:9 } } } } }
+    options:{ maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true, ticks:{ precision:0, font:{ size:8 } } }, y:{ ticks:{ font:{ size:8 } } } } }
   });
 
   destroyChart('topindikatordesa');
   const desaCanvas = document.getElementById('chartTopIndikatorDesa');
   const desaTitleEl = desaCanvas.closest('.chart-card').querySelector('h3');
   desaTitleEl.textContent = topIndikatorEntry
-    ? `Sebaran "${INDIKATOR.find(i=>i.no==topIndikatorEntry[0])?.indikator}" per Desa (seperti Grafik 7 laporan)`
-    : 'Sebaran Indikator Terbanyak per Desa (seperti Grafik 7 laporan)';
+    ? `Sebaran "${INDIKATOR.find(i=>i.no==topIndikatorEntry[0])?.indikator}" per Desa`
+    : 'Sebaran Indikator Terbanyak per Desa';
   if(desaChartData.length){
     charts.topindikatordesa = new Chart(desaCanvas, {
       type:'bar',
       data:{ labels:desaChartData.map(x=>x[0]), datasets:[{ label:'Jumlah kejadian', data:desaChartData.map(x=>x[1]), backgroundColor:'#F79320' }] },
-      options:{ maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ font:{ size:9 } } }, y:{ beginAtZero:true, ticks:{ precision:0, font:{ size:9 } } } } }
+      options:{ maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ font:{ size:8 } } }, y:{ beginAtZero:true, ticks:{ precision:0, font:{ size:8 } } } } }
     });
   }
 }
